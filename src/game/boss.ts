@@ -87,7 +87,7 @@ export class MutoidMan extends Boss {
 
   think(g: Game) {
     this.flash = Math.max(0, this.flash - DT);
-    const p = g.player;
+    const p = g.target(this);
     const rage = this.hp < this.maxHp / 2 ? 1.4 : 1;
 
     // patrol: long vertical sweeps, sidestepping towards the player at each turn
@@ -207,7 +207,7 @@ class Bolt {
   update(g: Game) {
     this.t += DT;
     if (this.t > this.len / (60 * STEP) + 0.45) this.done = true;
-    const p = g.player;
+    const p = g.target({ x: this.x, y: this.y });
     if (!p.alive) return;
     // distance from the player's body to the drawn part of the beam
     const px = p.x - this.x, py = p.y - 14 - this.y;

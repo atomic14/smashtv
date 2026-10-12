@@ -57,7 +57,8 @@ export class Crab extends Enemy {
     // keeps a heading for a while, like the grunts
     if ((this.hold -= DT) <= 0) {
       this.hold = headingHold();
-      const dx = g.player.x - this.x, dy = g.player.y - this.y;
+      const t = g.target(this);
+      const dx = t.x - this.x, dy = t.y - this.y;
       const d = Math.hypot(dx, dy) || 1;
       [this.ux, this.uy] = [dx / d, dy / d];
     }
@@ -122,7 +123,7 @@ export class Shrapnel extends Enemy {
 
   think(g: Game) {
     this.flash = Math.max(0, this.flash - DT);
-    const p = g.player;
+    const p = g.target(this);
     if (this.burst > 0) {
       this.burst += DT;
       if (this.burst >= 60 / PF) this.blowUp(g);
@@ -200,7 +201,7 @@ export class Turret extends Enemy {
 
   think(g: Game) {
     this.flash = Math.max(0, this.flash - DT);
-    const p = g.player;
+    const p = g.target(this);
     this.heading = Math.atan2(p.x - this.x, -(p.y - this.muzzleY));
     this.cd -= DT;
     if (this.cd <= 0 && p.alive) {
@@ -267,7 +268,7 @@ export class SwarmLeader extends Enemy {
   think(g: Game) {
     this.flash = Math.max(0, this.flash - DT);
     // steers smoothly towards the player, overshooting into loops
-    const p = g.player;
+    const p = g.target(this);
     const dx = p.x - this.x, dy = p.y - 10 - this.y;
     const d = Math.hypot(dx, dy) || 1;
     this.vx += (dx / d) * 2.2 * PF * DT;
@@ -325,7 +326,7 @@ export class SwarmBit extends Enemy {
 
   think(g: Game) {
     // home on the leader, or on the player once the leader is gone
-    const t = this.lead.dead ? g.player : this.lead;
+    const t = this.lead.dead ? g.target(this) : this.lead;
     const dx = t.x - this.x + rand(-10, 10), dy = t.y - this.y + rand(-10, 10);
     const d = Math.hypot(dx, dy) || 1;
     this.vx += (dx / d) * 360 * DT;
@@ -363,7 +364,7 @@ export class FloatOrb extends Enemy {
 
   think(g: Game) {
     this.flash = Math.max(0, this.flash - DT);
-    const p = g.player;
+    const p = g.target(this);
     const dx = p.x - this.x, dy = p.y - this.y;
     const d = Math.hypot(dx, dy) || 1;
     this.vx += (dx / d) * 90 * DT;

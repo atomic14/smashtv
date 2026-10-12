@@ -11,6 +11,8 @@ class Input {
   /** Edge-triggered "start / confirm". */
   start = false;
   pause = false;
+  /** Edge-triggered "toggle the AI partner" (2 key, or a gamepad's Select). */
+  partner = false;
   /** True once any touch has been seen; switches the UI to touch hints. */
   touch = false;
 
@@ -18,6 +20,8 @@ class Input {
   private startLatch = false;
   private pauseLatch = false;
   private padStart = false;
+  private partnerLatch = false;
+  private padSelect = false;
   private touchMove: Vec = { x: 0, y: 0 };
   private touchFire: Vec = { x: 0, y: 0 };
   private touchTap = false;
@@ -28,6 +32,7 @@ class Input {
       this.keys.add(e.code);
       if (e.code === 'Enter' || e.code === 'Space') this.startLatch = true;
       if (e.code === 'Escape' || e.code === 'KeyP') this.pauseLatch = true;
+      if (e.code === 'Digit2' || e.code === 'Numpad2') this.partnerLatch = true;
       if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
     });
     addEventListener('keyup', (e) => this.keys.delete(e.code));
@@ -57,7 +62,7 @@ class Input {
     let fx = k('ArrowRight') - k('ArrowLeft') + k('KeyL') - k('KeyJ');
     let fy = k('ArrowDown') - k('ArrowUp') + k('KeyK') - k('KeyI');
 
-    let padStart = false;
+    let padStart = false, padSelect = false;
     for (const pad of navigator.getGamepads?.() ?? []) {
       if (!pad) continue;
       const dz = (v: number) => (Math.abs(v) < 0.3 ? 0 : v);
@@ -72,9 +77,12 @@ class Input {
       fx += b(1) - b(2);
       fy += b(0) - b(3);
       if (b(9)) padStart = true;
+      if (b(8)) padSelect = true;
     }
     if (padStart && !this.padStart) this.startLatch = true;
     this.padStart = padStart;
+    if (padSelect && !this.padSelect) this.partnerLatch = true;
+    this.padSelect = padSelect;
 
     mx += this.touchMove.x;
     my += this.touchMove.y;
@@ -85,7 +93,8 @@ class Input {
     this.fire = clampVec(fx, fy);
     this.start = this.startLatch || this.touchTap;
     this.pause = this.pauseLatch;
-    this.startLatch = this.pauseLatch = this.touchTap = false;
+    this.partner = this.partnerLatch;
+    this.startLatch = this.pauseLatch = this.touchTap = this.partnerLatch = false;
   }
 
   private initTouch() {

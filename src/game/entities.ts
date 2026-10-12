@@ -18,6 +18,11 @@ export interface Entity extends Hittable {
 
 export type Weapon = 'gun' | 'spread' | 'rocket';
 
+/** Something that drives a player instead of the controls (the AI partner). */
+export interface Brain {
+  think(g: Game, me: Player): { move: Vec; fire: Vec };
+}
+
 export class Player implements Entity {
   x = 201;
   y = 180;
@@ -45,11 +50,19 @@ export class Player implements Entity {
   exiting: DoorId | null = null;
   /** Scripted movement target (entering/leaving rooms). */
   auto: Vec | null = null;
+  /** Off the field, waiting to come back in (the AI partner after dying). */
+  benched = false;
+
+  /** Player 1 is driven by the controls; player 2 (red) by a brain. */
+  constructor(
+    public id: 1 | 2 = 1,
+    public brain: Brain | null = null,
+  ) {}
 
   update(g: Game) {
     if (this.dying > 0) {
       this.dying -= DT;
-      if (this.dying <= 0) g.playerDied();
+      if (this.dying <= 0) g.playerDied(this);
       return;
     }
     this.invuln = Math.max(0, this.invuln - DT);
@@ -61,7 +74,8 @@ export class Player implements Entity {
       if (this.weaponT <= 0) this.weapon = 'gun';
     }
 
-    let mv: Vec = input.move;
+    const ctl = this.brain ? this.brain.think(g, this) : { move: input.move, fire: input.fire };
+    let mv: Vec = ctl.move;
     if (this.auto) {
       const dx = this.auto.x - this.x, dy = this.auto.y - this.y;
       const d = Math.hypot(dx, dy);
@@ -79,7 +93,8 @@ export class Player implements Entity {
       this.walkT = 0;
     }
     if (!this.auto) {
-      const exit = g.exitFor(this);
+      // only player 1 leads the way out; the partner follows into the next room
+      const exit = this.id === 1 ? g.exitFor(this) : null;
       if (exit) {
         this.exiting = exit;
       } else {
@@ -89,7 +104,7 @@ export class Player implements Entity {
     }
 
     // firing
-    const fd = this.auto ? -1 : dir8(input.fire, 0.3);
+    const fd = this.auto ? -1 : dir8(ctl.fire, 0.3);
     this.firing = fd >= 0;
     this.aimDir = this.firing ? fd : this.moveDir;
     this.fireCd -= DT;
@@ -105,7 +120,11 @@ export class Player implements Entity {
         for (const e of g.enemies) {
           if (e.dead || !e.shootable) continue;
           const c = bodyCenter(e);
-          if ((c.x - bx) ** 2 + (c.y - by) ** 2 < (e.r + 7) ** 2) e.damage(g, 2, { x: Math.cos(a), y: Math.sin(a) });
+          if ((c.x - bx) ** 2 + (c.y - by) ** 2 < (e.r + 7) ** 2) {
+            g.scorer = this;
+            e.damage(g, 2, { x: Math.cos(a), y: Math.sin(a) });
+            g.scorer = null;
+          }
         }
       }
     }
@@ -117,19 +136,19 @@ export class Player implements Entity {
     const muzzle = { x: this.x + v.x * 2, y: this.y - 18 + v.y * 2 };
     this.fireAnim = 0.06;
     if (this.weapon === 'rocket') {
-      g.shots.push(new Shot(muzzle.x, muzzle.y, v.x * 260, v.y * 260, 6, true, 'rocket'));
+      g.shots.push(new Shot(muzzle.x, muzzle.y, v.x * 260, v.y * 260, 6, true, 'rocket', this));
       this.fireCd = 0.28;
       audio.play(SND.rocket);
     } else if (this.weapon === 'spread') {
       for (const da of [-0.26, 0, 0.26]) {
         const a = Math.atan2(v.y, v.x) + da;
-        g.shots.push(new Shot(muzzle.x, muzzle.y, Math.cos(a) * SHOT_SPEED, Math.sin(a) * SHOT_SPEED, 1, true, 'shot'));
+        g.shots.push(new Shot(muzzle.x, muzzle.y, Math.cos(a) * SHOT_SPEED, Math.sin(a) * SHOT_SPEED, 1, true, 'shot', this));
       }
       this.fireCd = 8 / ARCADE_HZ;
       audio.play(SND.gun);
     } else {
       // 10.08 px/frame, one every 8 frames, as recorded from the original
-      g.shots.push(new Shot(muzzle.x, muzzle.y, v.x * SHOT_SPEED, v.y * SHOT_SPEED, 1, true, 'shot'));
+      g.shots.push(new Shot(muzzle.x, muzzle.y, v.x * SHOT_SPEED, v.y * SHOT_SPEED, 1, true, 'shot', this));
       this.fireCd = 8 / ARCADE_HZ;
       audio.play(SND.gun);
     }
@@ -143,26 +162,29 @@ export class Player implements Entity {
   }
 
   get alive() {
-    return this.dying <= 0;
+    return this.dying <= 0 && !this.benched;
   }
 
   draw() {
+    if (this.benched) return;
+    // player 2 is the same art in the red palette
+    const k = this.id === 2 ? 'p2.' : '';
     if (this.dying > 0) {
       const f = Math.floor((1.6 - this.dying) * 15);
-      if (f < anim('player.die').length) drawAt('player.die', f, this.x, this.y, 'player.die');
+      if (f < anim('player.die').length) drawAt(`${k}player.die`, f, this.x, this.y, 'player.die');
       return;
     }
     const blink = this.invuln > 0 && Math.floor(this.invuln * 12) % 2 === 0;
     if (this.invuln > 0 || this.shieldT > 0) {
-      const ring = this.shieldT > 0 ? 'ring.p1' : 'ring.p1';
+      const ring = this.id === 2 ? 'ring.p2' : 'ring.p1';
       drawAt(ring, 0, this.x, this.y + 6, ring, this.shieldT > 0 ? 0.9 : 0.6);
     }
     if (blink) return;
     const ld = DIR_NAME[this.moveDir];
-    const legs = `legs.${ld}`;
+    const legs = `${k}legs.${ld}`;
     const frame = this.walkT > 0 ? Math.floor(this.walkT * 14) : 0;
     const td = DIR_NAME[this.aimDir];
-    const torso = `torso.${td}`;
+    const torso = `${k}torso.${td}`;
     const tf = this.fireAnim > 0 ? 1 : 0;
     // torso behind legs when facing up, in front otherwise
     if (this.aimDir === 0 || this.aimDir === 1 || this.aimDir === 7) {
@@ -200,6 +222,8 @@ export class Shot implements Entity {
     public dmg: number,
     public friendly: boolean,
     public kind: ShotKind,
+    /** Who fired it, for the score. */
+    public owner: Player | null = null,
   ) {
     if (kind === 'rocket') this.r = 4;
     if (kind === 'eshot' || kind === 'shell' || kind === 'pellet' || kind === 'pellet2') this.r = 3;
@@ -220,14 +244,21 @@ export class Shot implements Entity {
         if (overlap(this, e)) {
           this.dead = true;
           const n = Math.hypot(this.vx, this.vy) || 1;
+          g.scorer = this.owner;
           e.damage(g, this.dmg, { x: this.vx / n, y: this.vy / n });
           if (this.kind === 'rocket') g.explode(this.x, this.y, 24, 4, true);
+          g.scorer = null;
           return;
         }
       }
-    } else if (g.player.alive && overlap(this, g.player)) {
-      this.dead = true;
-      g.player.hurt(g);
+    } else {
+      for (const p of g.players) {
+        if (p.alive && overlap(this, p)) {
+          this.dead = true;
+          p.hurt(g);
+          return;
+        }
+      }
     }
   }
 
@@ -351,7 +382,7 @@ export abstract class Enemy implements Entity {
     } else {
       this.think(g);
     }
-    if (this.lethal && g.player.alive && overlap(this, g.player, -2)) g.player.hurt(g);
+    if (this.lethal) for (const p of g.players) if (p.alive && overlap(this, p, -2)) p.hurt(g);
   }
 
   step(ux: number, uy: number, speed = this.speed) {
@@ -362,7 +393,7 @@ export abstract class Enemy implements Entity {
   }
 
   chase(g: Game, wobble = 0.4) {
-    const p = g.player;
+    const p = g.target(this);
     const dx = p.x - this.x + Math.sin(this.t * 2 + this.x) * 30 * wobble;
     const dy = p.y - this.y + Math.cos(this.t * 2 + this.y) * 30 * wobble;
     const d = Math.hypot(dx, dy) || 1;
@@ -427,7 +458,7 @@ export class Grunt extends Enemy {
     // rather than re-aiming every frame
     if ((this.hold -= DT) <= 0) {
       this.hold = headingHold();
-      const p = g.player;
+      const p = g.target(this);
       const dx = p.x - this.x, dy = p.y - this.y;
       const d = Math.hypot(dx, dy) || 1;
       this.ax = Math.abs(dx / d) > 0.38 ? Math.sign(dx) : 0;
@@ -461,7 +492,7 @@ export class Orb extends Enemy {
   flash = 0;
   think(g: Game) {
     this.flash = Math.max(0, this.flash - DT);
-    const p = g.player;
+    const p = g.target(this);
     const dx = p.x - this.x, dy = p.y - this.y;
     const d = Math.hypot(dx, dy) || 1;
     this.vx += (dx / d) * 70 * DT;
@@ -513,7 +544,7 @@ export class Tank extends Enemy {
     this.drive -= DT;
     if (this.drive < -rand(2, 3.5)) {
       this.drive = rand(0.8, 1.6);
-      this.goal = { x: clamp(g.player.x + rand(-80, 80), FLOOR.x0 + 20, FLOOR.x1 - 20), y: clamp(g.player.y + rand(-60, 60), FLOOR.y0 + 20, FLOOR.y1 - 10) };
+      this.goal = { x: clamp(g.target(this).x + rand(-80, 80), FLOOR.x0 + 20, FLOOR.x1 - 20), y: clamp(g.target(this).y + rand(-60, 60), FLOOR.y0 + 20, FLOOR.y1 - 10) };
     }
     const dx = this.goal.x - this.x, dy = this.goal.y - this.y;
     const d = Math.hypot(dx, dy) || 1;
@@ -523,9 +554,9 @@ export class Tank extends Enemy {
       this.heading = Math.atan2(dx, -dy);
     }
     this.cd -= DT;
-    if (this.cd <= 0 && g.player.alive) {
+    if (this.cd <= 0 && g.target(this).alive) {
       this.cd = rand(1.4, 2.6);
-      const p = g.player;
+      const p = g.target(this);
       const ax = p.x - this.x, ay = p.y - 12 - (this.y - 16);
       const n = Math.hypot(ax, ay) || 1;
       g.shots.push(new Shot(this.x, this.y - 16, (ax / n) * 110, (ay / n) * 110, 1, false, 'shell'));
@@ -563,7 +594,7 @@ export class Snake extends Enemy {
     this.turn -= DT;
     if (this.turn <= 0) {
       this.turn = rand(0.6, 1.4);
-      const p = g.player;
+      const p = g.target(this);
       if (Math.abs(p.x - this.x) > Math.abs(p.y - this.y)) {
         this.vx = Math.sign(p.x - this.x) || 1;
         this.vy = 0;
@@ -630,9 +661,12 @@ export class Pickup implements Entity {
   update(g: Game) {
     this.t += DT;
     if (this.t > this.life) this.dead = true;
-    if (g.player.alive && overlap(this, g.player, 2)) {
-      this.dead = true;
-      g.collect(this);
+    for (const p of g.players) {
+      if (p.alive && overlap(this, p, 2)) {
+        this.dead = true;
+        g.collect(this, p);
+        return;
+      }
     }
   }
 

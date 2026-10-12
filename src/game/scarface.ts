@@ -51,7 +51,7 @@ export class Scarface extends Boss {
   think(g: Game) {
     this.flash = Math.max(0, this.flash - DT);
     this.jawOpen = Math.max(0, this.jawOpen - DT);
-    const p = g.player;
+    const p = g.target(this);
     const rage = this.hp < this.maxHp / 2 ? 1.35 : 1;
 
     // roll slowly around the arena, drifting towards the player

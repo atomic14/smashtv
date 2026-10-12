@@ -1,7 +1,8 @@
 // Names for the images found in the ROM. Numbers index the 16-byte header scan
 // (scanHeaders order); 'p<n>' indexes the 12-byte system-palette scan (player parts).
 // A trailing 'f' (e.g. '829f') means horizontally flipped; 'a~b' is image a drawn with
-// header b's palette (the game recolours some art at runtime, e.g. the blue cobra).
+// header b's palette (the game recolours some art at runtime, e.g. the blue cobra), and
+// 'a~@addr' is image a drawn with the palette at ROM address addr.
 // Groupings follow the game's own animation and direction tables where they were found
 // (e.g. grunt directions from the table at FFE4DD00, legs from FFE24A00..FFE25870).
 
@@ -222,6 +223,16 @@ export const CATALOG: Record<string, Ref[]> = {
   'contestant': [701, 702, 703],
   'girl': [705],
 };
+
+/** Player 2 is drawn with the same parts in palette FFFC6570 (seen in a two-player game in MAME). */
+export const P2_PALETTE = 'fffc6570';
+for (const [name, refs] of Object.entries(CATALOG)) {
+  if (!/^(legs|torso|player\.die)/.test(name)) continue;
+  CATALOG[`p2.${name}`] = refs.map((r) => {
+    const s = String(r);
+    return s.endsWith('f') ? `${s.slice(0, -1)}~@${P2_PALETTE}f` : `${s}~@${P2_PALETTE}`;
+  });
+}
 
 /** Big white font (ASCII from '!'), from the ROM font table at FFE64630. */
 export const FONT_BIG =

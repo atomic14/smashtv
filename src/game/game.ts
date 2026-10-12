@@ -14,6 +14,7 @@ import { Host } from './host';
 import { WORLDS, TITLE_ROOM, STUDIO_ROOM, WorldMap, mapCell, type RoomDef } from './levels';
 import { WaveDirector } from './waves';
 import { Crab } from './enemies';
+import { AllyBrain } from './ally';
 
 type State = 'title' | 'intro' | 'map' | 'play' | 'transition' | 'continue' | 'gameover' | 'victory';
 
@@ -25,6 +26,12 @@ export class Game {
   stateT = 0;
   paused = false;
   player = new Player();
+  /** Player 2, driven by the AI partner (null when switched off). */
+  ally: Player | null = null;
+  /** Whether new games get the AI partner (2 on the title screen toggles it). */
+  partnerOn = localStorageGet('smashtv.partner') !== 'off';
+  /** The player whose shot is being resolved, so the kill scores for them. */
+  scorer: Player | null = null;
   enemies: Enemy[] = [];
   shots: Shot[] = [];
   effects: Effect[] = [];
@@ -63,9 +70,26 @@ export class Game {
     this.stateT = 0;
   }
 
+  /** Players on the field (player 1 always, plus the partner when present). */
+  get players(): Player[] {
+    return this.ally && !this.ally.benched ? [this.player, this.ally] : [this.player];
+  }
+
+  /** The player an enemy at `from` goes after: the nearest one still standing. */
+  target(from: { x: number; y: number }): Player {
+    let best = this.player, bd = Infinity;
+    for (const p of this.players) {
+      if (!p.alive) continue;
+      const d = Math.hypot(p.x - from.x, p.y - from.y);
+      if (d < bd) [best, bd] = [p, d];
+    }
+    return best;
+  }
+
   newGame() {
     this.timers = [];
     this.player = new Player();
+    this.ally = this.partnerOn ? new Player(2, new AllyBrain()) : null;
     this.world = 0;
     this.roomsCleared = 0;
     audio.play(SND.start);
@@ -121,6 +145,18 @@ export class Game {
       p.auto = null;
       p.invuln = 2.5;
     }
+    const a = this.ally;
+    if (a) {
+      // the partner comes in through the same door just behind player 1
+      a.exiting = null;
+      a.dying = 0;
+      a.benched = false;
+      a.x = p.x + (entry === 'left' || entry === 'right' ? 0 : 22);
+      a.y = p.y + (entry === 'left' || entry === 'right' ? 22 : 0);
+      a.auto = p.auto ? { x: p.auto.x + (a.x - p.x), y: p.auto.y + (a.y - p.y) } : null;
+      if (!a.auto) a.x += 30;
+      a.invuln = p.invuln;
+    }
     this.director = revisit ? null : new WaveDirector(this, this.room);
     if (revisit) {
       this.cleared = true;
@@ -167,6 +203,11 @@ export class Game {
 
     switch (this.state) {
       case 'title':
+        if (input.partner) {
+          this.partnerOn = !this.partnerOn;
+          localStorageSet('smashtv.partner', this.partnerOn ? 'on' : 'off');
+          audio.play(SND.pickup);
+        }
         if (input.start) this.newGame();
         break;
       case 'intro':
@@ -215,6 +256,11 @@ export class Game {
   private updatePlay() {
     const p = this.player;
     p.update(this);
+    const a = this.ally;
+    if (a && !a.benched) {
+      a.update(this);
+      if (a.auto && Math.hypot(a.auto.x - a.x, a.auto.y - a.y) < 3) a.auto = null;
+    }
     if (p.auto && Math.hypot(p.auto.x - p.x, p.auto.y - p.y) < 3) {
       if (p.exiting) {
         this.beginTransition(p.exiting);
@@ -356,7 +402,23 @@ export class Game {
     return this.state === 'play';
   }
 
-  playerDied() {
+  playerDied(who: Player) {
+    if (who !== this.player) {
+      // the partner has no lives to lose: it sits out a moment, then rejoins by player 1
+      who.benched = true;
+      who.dying = 0;
+      this.after(2.5, () => {
+        if (this.ally !== who) return;
+        const p = this.player;
+        who.benched = false;
+        who.x = clamp(p.x + (p.x < 200 ? 30 : -30), FLOOR.x0, FLOOR.x1);
+        who.y = p.y;
+        who.invuln = 3;
+        who.weapon = 'gun';
+        who.weaponT = 0;
+      });
+      return;
+    }
     const p = this.player;
     p.lives--;
     if (p.lives < 0) {
@@ -391,7 +453,7 @@ export class Game {
   }
 
   addScore(n: number) {
-    const p = this.player;
+    const p = this.scorer ?? this.player;
     const before = p.score;
     p.score += n;
     if (Math.floor(p.score / 500000) > Math.floor(before / 500000)) {
@@ -423,8 +485,9 @@ export class Game {
     }
   }
 
-  collect(pk: Pickup) {
-    const p = this.player;
+  collect(pk: Pickup, p = this.player) {
+    const scorer = this.scorer;
+    this.scorer = p;
     switch (pk.kind) {
       case 'spread':
       case 'rocket':
@@ -473,6 +536,7 @@ export class Game {
         audio.play(SND.bigMoney);
         break;
     }
+    this.scorer = scorer;
   }
 
   // ---------------------------------------------------------------- drawing
@@ -513,7 +577,7 @@ export class Game {
 
   private drawArena() {
     this.drawRoom(this.room.bg);
-    const list: Entity[] = [...this.pickups, ...this.enemies, ...this.shots, ...this.effects, this.player];
+    const list: Entity[] = [...this.pickups, ...this.enemies, ...this.shots, ...this.effects, ...this.players];
     list.sort((a, b) => a.y - b.y);
     for (const e of list) e.draw(this);
     if (this.cleared) this.drawExits();
@@ -575,9 +639,16 @@ export class Game {
       drawText(p.weapon.toUpperCase(), 64, 64, 'small');
       fillRect(104, 66, Math.max(0, (p.weaponT / 12) * 28), 3, '#ffd84a');
     }
-    // right panel: room / boss status
-    drawText(`ROOMS ${this.roomsCleared}`, 270, 52, 'small');
-    drawText(`HI ${this.hiScore}`, 270, 64, 'small');
+    // right panel: the partner's score, or room / hi-score status when playing alone
+    const a = this.ally;
+    if (a) {
+      drawText('PLAYER 2', 270, 52, 'small');
+      drawText(String(a.score).padStart(7, ' '), 362, 52, 'small', 'right');
+      drawText(a.benched ? 'CPU  BACK SOON' : 'CPU', 270, 64, 'small');
+    } else {
+      drawText(`ROOMS ${this.roomsCleared}`, 270, 52, 'small');
+      drawText(`HI ${this.hiScore}`, 270, 64, 'small');
+    }
     if (this.boss) {
       fillRect(130, 244, 140, 6, '#300');
       fillRect(130, 244, 140 * this.boss.health, 6, '#e22');
@@ -594,6 +665,9 @@ export class Game {
       drawText(t, W / 2, 198, 'small', 'center');
     }
     if (this.hiScore) drawText(`HI SCORE ${this.hiScore}`, W / 2, 4, 'small', 'center');
+    const partner = `CPU PLAYER 2 ${this.partnerOn ? 'ON' : 'OFF'}${input.touch ? '' : '  (PRESS 2)'}`;
+    fillRect(W / 2 - textWidth(partner) / 2 - 4, 184, textWidth(partner) + 8, 11, 'rgba(0,0,0,0.6)');
+    drawText(partner, W / 2, 186, 'small', 'center');
     this.drawControls();
   }
 

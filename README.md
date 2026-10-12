@@ -42,6 +42,13 @@ The port leans heavily on:
 | Gamepad | Left stick / d-pad | Right stick, or face buttons | Start |
 | Touch | Left thumbstick | Right thumbstick | Tap |
 
+**CPU player 2:** Smash T.V. is hard alone, so by default a computer-controlled player 2
+(the red contestant, in the original's player 2 palette) fights alongside you. It stays
+near you, dodges crowds, mines and enemy fire, grabs pickups when it is safe, and shoots
+whatever threatens you most. It has no lives to lose: when it dies it rejoins a few
+seconds later. Press **2** on the title screen (or Select on a gamepad) to switch it off
+or on.
+
 On phones, portrait shows the screen on top with the thumbsticks below; landscape puts the
 sticks beside the screen. The first tap goes fullscreen where the browser allows it
 (Android); on iPhone, use Share → Add to Home Screen to play fullscreen.
@@ -90,8 +97,8 @@ MAME, a **reference** to measure the new code against.
    - the continue screen plays "No way!" and its sting, from a log of sound commands.
 
 **Still approximate:** some enemy details (how often wall guns and tanks fire, the orb
-swarm's exact motion), power-up durations, scoring, and boss timings and hit points. Only
-one player is supported.
+swarm's exact motion), power-up durations, scoring, and boss timings and hit points.
+Player 2 is computer-controlled only; there is no local two-player mode yet.
 
 ## Building it yourself
 

@@ -31,6 +31,12 @@ interface Sprite { key: string; h: ImageHeader }
 const sprites: Sprite[] = [...withPal, ...plain].map((h) => ({ key: hex(h.at), h }));
 const headerFor = (ref: string) => (ref.startsWith('p') ? plain[Number(ref.slice(1))] : withPal[Number(ref)]);
 for (const ref of new Set(Object.values(CATALOG).flat().map(String))) {
+  const at = ref.match(/^(p?\d+)~@([0-9a-f]+)f?$/);
+  if (at) {
+    const base = headerFor(at[1]);
+    sprites.push({ key: `${hex(base.at)}~${at[2]}`, h: { ...base, pal: parseInt(at[2], 16) } });
+    continue;
+  }
   const m = ref.match(/^(\d+)~(\d+)f?$/);
   if (!m) continue;
   const base = withPal[Number(m[1])], other = withPal[Number(m[2])];
@@ -83,6 +89,7 @@ const resolve = (ref: number | string): [string, number] => {
   const body = flip ? s.slice(0, -1) : s;
   const [img, palFrom] = body.split('~');
   const h = headerFor(img);
+  if (palFrom?.startsWith('@')) return [`${hex(h.at)}~${palFrom.slice(1)}`, flip];
   if (!h || (palFrom && !withPal[Number(palFrom)])) throw new Error(`catalog ref ${s} out of range`);
   return [palFrom ? `${hex(h.at)}~${hex(withPal[Number(palFrom)].pal)}` : hex(h.at), flip];
 };

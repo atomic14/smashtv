@@ -54,7 +54,7 @@ export class Host extends Boss {
 
   think(g: Game) {
     this.flash = Math.max(0, this.flash - DT);
-    const p = g.player;
+    const p = g.target(this);
     const rage = this.hp < this.maxHp / 2 ? 1.4 : 1;
     if (Math.hypot(this.goal.x - this.x, this.goal.y - this.y) < 2) {
       const top = this.y > 180;
@@ -161,7 +161,7 @@ class SparkTrail {
     this.t += DT;
     const burstT = this.t - this.len / (30 * STEP);
     if (burstT > 0.5) this.done = true;
-    const p = g.player;
+    const p = g.target(this.from);
     if (!p.alive) return;
     const px = p.x - this.from.x, py = p.y - 14 - this.from.y;
     const along = clamp(px * this.ux + py * this.uy, 0, this.reach);

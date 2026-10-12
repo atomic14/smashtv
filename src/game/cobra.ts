@@ -58,7 +58,7 @@ class Cobra extends Enemy {
 
   think(g: Game) {
     this.flash = Math.max(0, this.flash - DT);
-    const p = g.player;
+    const p = g.target(this);
     if (this.attack > 0) {
       this.attack += DT;
       const t = this.attack - FLAME.rear;
