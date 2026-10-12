@@ -92,7 +92,11 @@ export const CATALOG: Record<string, Ref[]> = {
   'mutoid.gun': [945],
   'mutoid.arm': seq(934, 938),
   'mutoid.tread': seq(942, 944),
-  'mutoid.zap': seq(947, 952),
+  // lightning segments by slope (vertical, steep, diagonal, shallow) and the spark at its tip
+  'mutoid.bolt': [947, 948, 949, 950],
+  'mutoid.spark': [951, 952],
+  'boss.pellet': [648],
+  'mine.spike': [598],
   // ---- shots and effects ----
   'shot.v': [601],
   'shot.d': [599],

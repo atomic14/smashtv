@@ -4,7 +4,7 @@ import { input } from '../input';
 import { audio, SND } from '../audio';
 import { DT, ROOM_X, ROOM_Y, FLOOR, DOORS, DOOR_IDS, type DoorId, rand, irand, pick, clamp } from './world';
 import {
-  Player, Shot, Effect, Enemy, Grunt, Spear, Orb, Mine, Tank, Snake, Pickup,
+  Player, Shot, Effect, Enemy, Grunt, Spear, Orb, Mine, SpikeMine, Tank, Snake, Pickup,
   POWERUPS, PRIZES, type PickupKind, type Entity,
 } from './entities';
 import { MutoidMan } from './boss';
@@ -267,6 +267,11 @@ export class Game {
       this.bossSpawned = true;
       this.boss = new MutoidMan();
       this.enemies.push(this.boss);
+      for (let i = 0; i < 6; i++) {
+        const m = new SpikeMine(rand(FLOOR.x0 + 30, FLOOR.x1 - 30), rand(FLOOR.y0 + 40, FLOOR.y1 - 10));
+        m.entering = false;
+        if (Math.hypot(m.x - this.player.x, m.y - this.player.y) > 50) this.enemies.push(m);
+      }
       audio.play(SND.explode);
       this.shake = 0.5;
     }
@@ -567,6 +572,10 @@ export class Game {
       }
       if (id === 'left') drawFrameAt(anim('arrow.l')[0], FLOOR.x0 - 10, d.y - 22);
       if (id === 'right') drawFrameAt([anim('arrow.l')[0][0], 1], FLOOR.x1 + 2, d.y - 22);
+      // the original also labels the open door with an EXIT sign on the floor
+      const exit = anim('exit')[0];
+      const pos = { top: [d.x - 14, FLOOR.y0 + 4], bottom: [d.x - 14, FLOOR.y1 - 26], left: [FLOOR.x0 + 8, d.y - 18], right: [FLOOR.x1 - 36, d.y - 18] }[id];
+      drawFrameAt(exit, pos[0], pos[1]);
     }
   }
 

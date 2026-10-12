@@ -182,7 +182,7 @@ export class Player implements Entity {
 // Shots
 // ---------------------------------------------------------------------------------
 
-export type ShotKind = 'shot' | 'rocket' | 'eshot' | 'shell';
+export type ShotKind = 'shot' | 'rocket' | 'eshot' | 'shell' | 'pellet';
 
 export class Shot implements Entity {
   r = 2;
@@ -199,7 +199,7 @@ export class Shot implements Entity {
     public kind: ShotKind,
   ) {
     if (kind === 'rocket') this.r = 4;
-    if (kind === 'eshot' || kind === 'shell') this.r = 3;
+    if (kind === 'eshot' || kind === 'shell' || kind === 'pellet') this.r = 3;
   }
 
   update(g: Game) {
@@ -244,6 +244,10 @@ export class Shot implements Entity {
     }
     if (this.kind === 'eshot') {
       drawAt('eshot', Math.floor(this.t * 12), this.x, this.y + 3, 'eshot');
+      return;
+    }
+    if (this.kind === 'pellet') {
+      drawAt('boss.pellet', 0, this.x, this.y + 3, 'boss.pellet');
       return;
     }
     if (this.kind === 'shell') {
@@ -480,6 +484,22 @@ export class Mine extends Enemy {
   }
   draw() {
     drawAt('mine', Math.floor(this.t * 10), this.x, this.y);
+  }
+  die(g: Game) {
+    g.explode(this.x, this.y - 4, 0, 0, false);
+  }
+}
+
+/** Spiked floor mine scattered around boss arenas: static, deadly to touch, shootable. */
+export class SpikeMine extends Enemy {
+  score = 100;
+  counts = false;
+  hp = 2;
+  bodyH = 7;
+  r = 7;
+  think() {}
+  draw() {
+    drawAt('mine.spike', 0, this.x, this.y);
   }
   die(g: Game) {
     g.explode(this.x, this.y - 4, 0, 0, false);
