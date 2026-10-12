@@ -1,0 +1,5 @@
+node_modules
+dist
+*.zip
+# extracted from the copyrighted ROM set: regenerate with `npm run extract` / tools/record-audio.sh
+public/assets/
