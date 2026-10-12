@@ -592,6 +592,17 @@ export class Game {
       drawText(t, W / 2, 198, 'small', 'center');
     }
     if (this.hiScore) drawText(`HI SCORE ${this.hiScore}`, W / 2, 4, 'small', 'center');
+    this.drawControls();
+  }
+
+  /** How to play, under the start prompt. */
+  private drawControls() {
+    const lines = input.touch
+      ? ['LEFT STICK  MOVE', 'RIGHT STICK  FIRE', 'TAP  START']
+      : ['WASD  MOVE      ARROWS  FIRE', 'P  PAUSE    M  MUTE', 'GAMEPAD  STICKS TO MOVE AND FIRE'];
+    const w = Math.max(...lines.map((l) => textWidth(l))) + 12;
+    fillRect(W / 2 - w / 2, 214, w, lines.length * 10 + 4, 'rgba(0,0,0,0.9)');
+    lines.forEach((l, i) => drawText(l, W / 2, 217 + i * 10, 'small', 'center'));
   }
 
   private drawIntro() {
