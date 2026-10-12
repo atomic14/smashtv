@@ -48,6 +48,8 @@ export class Game {
   /** Callbacks scheduled in game time (so they respect pause). */
   timers: { at: number; fn: () => void }[] = [];
   shake = 0;
+  /** Prize caption sprite shown after collecting a prize box. */
+  caption: { frame: number; t: number } | null = null;
   message: { text: string; t: number; big?: boolean } | null = null;
   transition: { from: string; to: string; door: DoorId; t: number } | null = null;
   hiScore = Number(localStorageGet('smashtv.hi') ?? 0);
@@ -162,6 +164,7 @@ export class Game {
       for (const t of due) t.fn();
     }
     if (this.message && (this.message.t -= DT) <= 0) this.message = null;
+    if (this.caption && (this.caption.t -= DT) <= 0) this.caption = null;
     this.shake = Math.max(0, this.shake - DT);
 
     switch (this.state) {
@@ -486,6 +489,7 @@ export class Game {
       case 'prize':
         this.addScore(10000);
         audio.play(SND.bigPrizes);
+        this.caption = { frame: pk.frame, t: 2.2 };
         break;
       case 'money':
         this.addScore(25000);
@@ -538,6 +542,11 @@ export class Game {
     for (const e of list) e.draw(this);
     if (this.cleared) this.drawExits();
     this.drawHud();
+    if (this.caption) {
+      const c = anim('prize.caption')[this.caption.frame];
+      const f = assets.frames[c[0]];
+      drawFrameAt(c, Math.round(W / 2 - f[3] / 2), 84);
+    }
     if (this.message) {
       const m = this.message;
       if (m.big) drawText(m.text, W / 2, 120, 'big', 'center');

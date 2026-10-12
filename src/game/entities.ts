@@ -643,7 +643,7 @@ export class Pickup implements Entity {
 
   draw() {
     if (this.life - this.t < 2 && Math.floor(this.t * 10) % 2) return;
-    drawAt(PICKUP_ANIM[this.kind], this.frame, this.x, this.y);
+    drawAt(PICKUP_ANIM[this.kind], this.frame, this.x, this.y, PICKUP_ANIM[this.kind]);
   }
 }
 

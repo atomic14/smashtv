@@ -146,7 +146,10 @@ export const CATALOG: Record<string, Ref[]> = {
   'pu.key': [515],
   'pu.speed': [516],
   'pu.grenade': [517],
-  'prize.box': seq(394, 402),
+  // prize boxes in the order of the ROM's prize table (FFE2FBC0), which matches the
+  // order of their caption sprites ('A BRAND NEW TOASTER' ... 'YEAR SUPPLY OF MEAT PRODUCTS')
+  'prize.box': [396, 394, 395, 400, 401, 402, 397, 399, 398],
+  'prize.caption': seq(548, 556),
   'prize.small': seq(388, 393),
   'prize.gift': [585, 586, 587],
   'prize.cash': [582, 583, 584],
