@@ -38,7 +38,8 @@ export class Crab extends Enemy {
   r = 9;
   bodyH = 10;
   score = 150;
-  skin = pick(['crab.gold', 'crab.red']);
+  // gold outnumber red about three to one in the recordings
+  skin = Math.random() < 0.75 ? 'crab.gold' : 'crab.red';
   sx: number;
   sy: number;
 
@@ -358,7 +359,6 @@ export class FloatOrb extends Enemy {
   entering = false;
   vx = rand(-40, 40);
   vy = rand(-40, 40);
-  skin = pick(['bossorb.green', 'bossorb.purple']);
   flash = 0;
 
   think(g: Game) {
@@ -383,7 +383,8 @@ export class FloatOrb extends Enemy {
 
   draw() {
     if (this.flash > 0 && Math.floor(this.flash * 60) % 2) return;
-    drawAt(this.skin, Math.floor(this.t * 8), this.x, this.y);
+    // purple only while materialising, then green (as recorded)
+    drawAt(this.t < 0.4 ? 'bossorb.purple' : 'bossorb.green', Math.floor(this.t * 8), this.x, this.y);
   }
 
   die(g: Game) {
