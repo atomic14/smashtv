@@ -3,6 +3,8 @@
 **Play it at [smashtv.atomic14.com](https://smashtv.atomic14.com)** — on a desktop, with a
 gamepad, or on your phone.
 
+![Gameplay: the player fights grunts in a world 1 arena](docs/demo.gif)
+
 A port of the 1990 arcade game *Smash T.V.* to the browser, written in TypeScript with Vite.
 It is not an emulator: the game logic has been rewritten from scratch, while the graphics,
 sound, music, level layouts and enemy waves are read straight out of the original arcade
