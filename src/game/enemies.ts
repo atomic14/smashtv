@@ -5,7 +5,7 @@ import { drawAt, drawFrame } from '../gfx';
 import { audio, SND } from '../audio';
 import { type Vec, DIR_NAME } from '../input';
 import { DT, FLOOR, rand, clamp, pick, ARCADE_HZ } from './world';
-import { Enemy, Shot, Effect } from './entities';
+import { Enemy, Shot, Effect, headingHold } from './entities';
 import type { Game } from './game';
 
 /** px/frame in the original -> px/s here. */
@@ -42,6 +42,10 @@ export class Crab extends Enemy {
   sx: number;
   sy: number;
 
+  ux = 0;
+  uy = 0;
+  hold = 0;
+
   constructor(x: number, y: number, tier: number) {
     super(x, y);
     ({ x: this.sx, y: this.sy } = tierSpeed(tier));
@@ -49,11 +53,14 @@ export class Crab extends Enemy {
   }
 
   think(g: Game) {
-    const p = g.player;
-    const dx = p.x - this.x + Math.sin(this.t * 2 + this.x) * 12;
-    const dy = p.y - this.y + Math.cos(this.t * 2 + this.y) * 12;
-    const d = Math.hypot(dx, dy) || 1;
-    walk8(this, dx / d, dy / d, this.sx, this.sy);
+    // keeps a heading for a while, like the grunts
+    if ((this.hold -= DT) <= 0) {
+      this.hold = headingHold();
+      const dx = g.player.x - this.x, dy = g.player.y - this.y;
+      const d = Math.hypot(dx, dy) || 1;
+      [this.ux, this.uy] = [dx / d, dy / d];
+    }
+    walk8(this, this.ux, this.uy, this.sx, this.sy);
     this.x = clamp(this.x, FLOOR.x0 - 10, FLOOR.x1 + 10);
     this.y = clamp(this.y, FLOOR.y0 - 6, FLOOR.y1 + 4);
   }
@@ -71,19 +78,44 @@ export class Crab extends Enemy {
 }
 
 /**
- * Mr. Shrapnel (wave type 4): plods towards the player in straight lines at 0.5 px/frame,
- * then stops, flashes and bursts into a ring of shrapnel.
+ * Burst velocities (px/frame) by facing 1..8 (1 = left, 3 = down, 5 = right, 7 = up): five
+ * pieces fanned along the facing (FFEED010/FFEED130).
+ */
+const BURST: [number, number][][] = [
+  [],
+  [[-1, -2], [-1.5, -1], [-1.75, 0], [-1.5, 1], [-1, 2]],
+  [[-1.5, 0], [-1.75, 1], [-1.63, 1.75], [-1, 2], [0, 2]],
+  [[-2, 1], [-1, 2], [0, 2.19], [1, 2], [2, 1]],
+  [[1.5, 0], [1.75, 1], [1.63, 1.75], [1, 2], [0, 2]],
+  [[1, -2], [1.5, -1], [1.75, 0], [1.5, 1], [1, 2]],
+  [[1.5, 0], [1.75, -1], [1.63, -1.75], [1, -2], [0, -2]],
+  [[-2, -1], [-1, -2], [0, -2.19], [1, -2], [2, -1]],
+  [[-1.5, 0], [-1.75, -1], [-1.63, -1.75], [-1, -2], [0, -2]],
+];
+
+/** Facing 1..8 (1 = left, anticlockwise through down) of a vector. */
+function facing(dx: number, dy: number) {
+  const a = Math.atan2(dy, -dx); // 0 = left, positive towards down
+  return ((Math.round(a / (Math.PI / 4)) + 8) % 8) + 1;
+}
+
+/**
+ * Mr. Shrapnel (wave type 4, process F0, FFEE9A40): wanders in long straight lines at
+ * 0.5 px/frame (0.44 up and down), turning his facing a step at a time towards the player.
+ * When the player lines up with it he stops for 40 frames, shakes for 20 and bursts into
+ * five pieces fanned along his facing.
  */
 export class Shrapnel extends Enemy {
   hp = 3;
   score = 500;
   r = 10;
   bodyH = 14;
-  speed = 0.5 * PF;
   vx = 0;
   vy = 1;
-  turn = 0;
-  fuse = rand(5, 9);
+  hold = 0;
+  face = 3;
+  turnT = 0;
+  /** Seconds into the stop-and-shake before bursting (0 while walking). */
   burst = 0;
   flash = 0;
 
@@ -91,33 +123,38 @@ export class Shrapnel extends Enemy {
     this.flash = Math.max(0, this.flash - DT);
     const p = g.player;
     if (this.burst > 0) {
-      this.burst -= DT;
-      if (this.burst <= 0) this.blowUp(g);
+      this.burst += DT;
+      if (this.burst >= 60 / PF) this.blowUp(g);
       return;
     }
-    this.fuse -= DT;
-    if (this.fuse <= 0 || (p.alive && Math.hypot(p.x - this.x, p.y - this.y) < 36)) {
-      this.burst = 0.6;
-      return;
+    // turn the facing one step towards the player now and then; burst when lined up
+    if ((this.turnT -= DT) <= 0) {
+      this.turnT = 5 / PF;
+      const want = facing(p.x - this.x, p.y - this.y);
+      if (want === this.face && p.alive && this.t > 1.5) {
+        this.burst = DT;
+        return;
+      }
+      const d = (want - this.face + 8) % 8;
+      this.face = ((this.face - 1 + (d < 4 ? 1 : -1) + 8) % 8) + 1;
     }
-    this.turn -= DT;
-    if (this.turn <= 0) {
-      this.turn = rand(0.8, 1.6);
-      const dx = p.x - this.x, dy = p.y - this.y;
+    // straight walks of a second or few, along one axis
+    if ((this.hold -= DT) <= 0 || this.x < FLOOR.x0 || this.x > FLOOR.x1 || this.y < FLOOR.y0 || this.y > FLOOR.y1) {
+      this.hold = rand(0.8, 4);
+      const dx = rand(FLOOR.x0, FLOOR.x1) - this.x, dy = rand(FLOOR.y0, FLOOR.y1) - this.y;
       if (Math.abs(dx) > Math.abs(dy)) [this.vx, this.vy] = [Math.sign(dx) || 1, 0];
       else [this.vx, this.vy] = [0, Math.sign(dy) || 1];
     }
-    this.step(this.vx, this.vy);
-    this.x = clamp(this.x, FLOOR.x0, FLOOR.x1);
-    this.y = clamp(this.y, FLOOR.y0, FLOOR.y1);
+    const v = this.vx ? 0.5 * PF : 0.44 * PF;
+    this.x = clamp(this.x + this.vx * v * DT, FLOOR.x0 - 2, FLOOR.x1 + 2);
+    this.y = clamp(this.y + this.vy * v * DT, FLOOR.y0 - 2, FLOOR.y1 + 2);
   }
 
   private blowUp(g: Game) {
     this.dead = true;
     g.explode(this.x, this.y - 10, 0, 0, false);
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2;
-      g.shots.push(new Shot(this.x, this.y - 10, Math.cos(a) * 110, Math.sin(a) * 110, 1, false, 'pellet'));
+    for (const [vx, vy] of BURST[this.face]) {
+      g.shots.push(new Shot(this.x, this.y - 10, vx * PF, vy * PF, 1, false, 'pellet'));
     }
     audio.play(SND.explode, { volume: 0.6 });
   }
@@ -128,9 +165,14 @@ export class Shrapnel extends Enemy {
 
   draw() {
     if (this.flash > 0 && Math.floor(this.flash * 60) % 2) return;
-    if (this.burst > 0 && Math.floor(this.burst * 20) % 2) return;
     const name = this.vy < 0 ? 'shrapnel.u' : this.vy > 0 ? 'shrapnel.d' : this.vx < 0 ? 'shrapnel.l' : 'shrapnel.r';
-    drawAt(name, this.burst > 0 ? 0 : Math.floor(this.t * 10), this.x, this.y, 'shrapnel.d');
+    if (this.burst > 0) {
+      // standing still, then shaking (FFEEA440 jitter) before the burst
+      const shake = this.burst > 40 / PF ? rand(-2, 2) : 0;
+      drawAt(name, 0, this.x + shake, this.y, 'shrapnel.d');
+      return;
+    }
+    drawAt(name, Math.floor(this.t * 10), this.x, this.y, 'shrapnel.d');
   }
 
   die(g: Game) {

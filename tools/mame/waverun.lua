@@ -19,6 +19,10 @@ local START = tonumber(os.getenv("START_WORLD") or "1")
 local LAST = tonumber(os.getenv("LAST_WORLD") or "3")
 local OUT = os.getenv("OUT") or "room"
 local PREF = os.getenv("PREF") or "RDUL"
+-- TRACK=1 logs each process's object every frame (ids in SKIP excluded: bullets, timers)
+local TRACK = os.getenv("TRACK") == "1"
+local SKIP = { [0x0000] = true, [0x0606] = true, [0x011e] = true, [0x7777] = true }
+local OBJ_EVERY = tonumber(os.getenv("OBJ_EVERY") or "4")
 
 -- corridors (col,row,col,row) and boss cells per world, from public/assets/worlds.json
 local WORLD = {
@@ -210,15 +214,23 @@ emu.register_frame_done(function()
 
   if recording then
     local procs, objs = {}, {}
+    local cx, cy = r32(0x01000240) / 65536, r32(0x01000260) / 65536
     local p, k = r32(0x01000000), 0
     while p ~= 0 and k < 400 do
       k = k + 1
-      procs[#procs + 1] = string.format("[%d,%d,%d]", sp:read_u16(p + 0x20), p & 0xffffff, r32(p + 0xc0) & 0xffffff)
+      local id, o = sp:read_u16(p + 0x20), r32(p + 0xc0)
+      if TRACK and not SKIP[id] and o >= 0x01000000 and o < 0x01030000 then
+        -- the process's own object, every frame: [id, proc, obj, image, x, y, vx, vy]
+        procs[#procs + 1] = string.format("[%d,%d,%d,%d,%.2f,%.2f,%.3f,%.3f]", id, p & 0xffffff, o & 0xffffff,
+          r32(o + 0x130) & 0xffffff, s32(o + 0x60) / 65536 - cx, s32(o + 0x80) / 65536 - cy,
+          s32(o + 0x20) / 65536, s32(o + 0x40) / 65536)
+      else
+        procs[#procs + 1] = string.format("[%d,%d,%d]", id, p & 0xffffff, o & 0xffffff)
+      end
       p = r32(p)
     end
-    local cx, cy = r32(0x01000240) / 65536, r32(0x01000260) / 65536
     local extra = ""
-    if frame % 4 == 0 then
+    if frame % OBJ_EVERY == 0 then
       for _, head in ipairs({ 0x01000040, 0x01000060 }) do
         local o = r32(head)
         k = 0

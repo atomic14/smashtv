@@ -390,6 +390,15 @@ export abstract class Enemy implements Entity {
 }
 
 /**
+ * How long a walker keeps its heading, in seconds: log-normal around the recorded median
+ * of 45 frames (10% under 6 frames, 10% over 390).
+ */
+export function headingHold() {
+  const n = Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random());
+  return clamp(Math.exp(Math.log(45) + 1.6 * n), 4, 450) / ARCADE_HZ;
+}
+
+/**
  * Club-wielding grunt: walks at the player in 8 directions. Its wave's speed tier sets the
  * across speed (0.5 + tier/8 px/frame); up/down is 1/16 px/frame slower and diagonals
  * are 0.8x of each (FFE3EC30).
@@ -398,6 +407,10 @@ export class Grunt extends Enemy {
   r = 7;
   sx: number;
   sy: number;
+  /** Current heading (unit steps on each axis) and how long it is kept. */
+  ax = 0;
+  ay = 0;
+  hold = 0;
 
   /** 'spear' in world 3, where the same wave type uses the purple spear guys' art. */
   constructor(x: number, y: number, tier = 0, public skin: 'grunt' | 'spear' = 'grunt') {
@@ -405,20 +418,26 @@ export class Grunt extends Enemy {
     this.sx = (0.5 + 0.125 * tier) * ARCADE_HZ;
     this.sy = this.sx - ARCADE_HZ / 16;
     this.speed = this.sx;
+    // some loiter in the doorway before coming on
+    if (Math.random() < 0.15) this.hold = rand(1.5, 3);
   }
 
   think(g: Game) {
-    const p = g.player;
-    const dx = p.x - this.x + Math.sin(this.t * 2 + this.x) * 15;
-    const dy = p.y - this.y + Math.cos(this.t * 2 + this.y) * 15;
-    const d = Math.hypot(dx, dy) || 1;
-    const ax = Math.abs(dx / d) > 0.38 ? Math.sign(dx) : 0;
-    const ay = Math.abs(dy / d) > 0.38 ? Math.sign(dy) : 0;
-    const k = ax && ay ? 0.8 : 1;
-    this.x = clamp(this.x + ax * this.sx * k * DT, FLOOR.x0 - 10, FLOOR.x1 + 10);
-    this.y = clamp(this.y + ay * this.sy * k * DT, FLOOR.y0 - 6, FLOOR.y1 + 4);
-    const dir = dir8({ x: ax, y: ay }, 0.01);
-    if (dir >= 0) this.dir = dir;
+    // the original commits to a heading for a while (median ~0.8s, often seconds)
+    // rather than re-aiming every frame
+    if ((this.hold -= DT) <= 0) {
+      this.hold = headingHold();
+      const p = g.player;
+      const dx = p.x - this.x, dy = p.y - this.y;
+      const d = Math.hypot(dx, dy) || 1;
+      this.ax = Math.abs(dx / d) > 0.38 ? Math.sign(dx) : 0;
+      this.ay = Math.abs(dy / d) > 0.38 ? Math.sign(dy) : 0;
+      const dir = dir8({ x: this.ax, y: this.ay }, 0.01);
+      if (dir >= 0) this.dir = dir;
+    }
+    const k = this.ax && this.ay ? 0.8 : 1;
+    this.x = clamp(this.x + this.ax * this.sx * k * DT, FLOOR.x0 - 10, FLOOR.x1 + 10);
+    this.y = clamp(this.y + this.ay * this.sy * k * DT, FLOOR.y0 - 6, FLOOR.y1 + 4);
   }
   draw() {
     drawAt(`${this.skin}.${DIR_NAME[this.dir]}`, Math.floor(this.t * 10), this.x, this.y, `${this.skin}.d`);
