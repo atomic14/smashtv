@@ -6,13 +6,13 @@
 //    (if fewer than the room's cap are alive) and decrements count;
 //  - when the room's main wave (its grunts, crabs or saucer orbs) has all come in, the game
 //    waits 2s, stops the other spawners, and opens the exits once the enemies are dead.
-import { DOORS, DOOR_IDS, FLOOR, rand, irand, pick, type DoorId } from './world';
+import { DOORS, DOOR_IDS, FLOOR, rand, irand, pick, ARCADE_HZ, type DoorId } from './world';
 import { Enemy, Effect, Grunt, Orb, Tank, Snake } from './entities';
 import { Crab, Shrapnel, Turret, FloorMine, SwarmLeader, FloatOrb } from './enemies';
 import type { RoomDef, WaveSlot } from './levels';
 import type { Game } from './game';
 
-const TICK = 3 / 60;
+const TICK = 3 / ARCADE_HZ;
 /** Types whose wave decides when the room ends, in priority order. */
 const MAIN = [6, 10, 2];
 /** Boss types: spawned by the game, not the director. */
@@ -21,6 +21,8 @@ const BOSSES = [8, 9, 15];
 const TURRET_AT = [117, 285];
 /** Chance per spawn of a grunt squad through one door instead of a single grunt (FFE3B150). */
 const SQUAD_CHANCE = 140 / 1000;
+/** The room ends this long after its main wave is in (FFEC6CF0 sleeps 120 frames). */
+const WIND_DOWN = 120 / ARCADE_HZ;
 
 interface Slot {
   type: number;
@@ -54,7 +56,7 @@ export class WaveDirector {
 
   /** True once the main wave is in and the other spawners have been stopped. */
   get finished() {
-    return this.mainDoneT >= 2 || (!this.main && this.slots.every((s) => s.count <= 0));
+    return this.mainDoneT >= WIND_DOWN || (!this.main && this.slots.every((s) => s.count <= 0));
   }
 
   update(dt: number) {

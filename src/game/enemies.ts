@@ -4,12 +4,12 @@ import { anim, assets } from '../assets';
 import { drawAt, drawFrame } from '../gfx';
 import { audio, SND } from '../audio';
 import { type Vec, DIR_NAME } from '../input';
-import { DT, FLOOR, rand, clamp, pick } from './world';
+import { DT, FLOOR, rand, clamp, pick, ARCADE_HZ } from './world';
 import { Enemy, Shot, Effect } from './entities';
 import type { Game } from './game';
 
 /** px/frame in the original -> px/s here. */
-const PF = 60;
+const PF = ARCADE_HZ;
 
 /**
  * Speed of a grunt-style walker in tier `t` (wave p1): 0.5 + t/8 px/frame across, 1/16

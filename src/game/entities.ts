@@ -2,8 +2,10 @@ import { anim } from '../assets';
 import { drawAt, ctx } from '../gfx';
 import { input, dir8, DIR_VEC, DIR_NAME, type Vec } from '../input';
 import { audio, SND } from '../audio';
-import { DT, FLOOR, DOORS, type DoorId, type Hittable, clamp, rand, pick, overlap, bodyCenter } from './world';
+import { DT, FLOOR, DOORS, type DoorId, type Hittable, clamp, rand, pick, overlap, bodyCenter, ARCADE_HZ } from './world';
 import type { Game } from './game';
+
+const SHOT_SPEED = 10.08 * ARCADE_HZ;
 
 export interface Entity extends Hittable {
   update(g: Game): void;
@@ -121,13 +123,14 @@ export class Player implements Entity {
     } else if (this.weapon === 'spread') {
       for (const da of [-0.26, 0, 0.26]) {
         const a = Math.atan2(v.y, v.x) + da;
-        g.shots.push(new Shot(muzzle.x, muzzle.y, Math.cos(a) * 380, Math.sin(a) * 380, 1, true, 'shot'));
+        g.shots.push(new Shot(muzzle.x, muzzle.y, Math.cos(a) * SHOT_SPEED, Math.sin(a) * SHOT_SPEED, 1, true, 'shot'));
       }
-      this.fireCd = 0.13;
+      this.fireCd = 8 / ARCADE_HZ;
       audio.play(SND.gun);
     } else {
-      g.shots.push(new Shot(muzzle.x, muzzle.y, v.x * 400, v.y * 400, 1, true, 'shot'));
-      this.fireCd = 0.1;
+      // 10.08 px/frame, one every 8 frames, as recorded from the original
+      g.shots.push(new Shot(muzzle.x, muzzle.y, v.x * SHOT_SPEED, v.y * SHOT_SPEED, 1, true, 'shot'));
+      this.fireCd = 8 / ARCADE_HZ;
       audio.play(SND.gun);
     }
   }
@@ -399,8 +402,8 @@ export class Grunt extends Enemy {
   /** 'spear' in world 3, where the same wave type uses the purple spear guys' art. */
   constructor(x: number, y: number, tier = 0, public skin: 'grunt' | 'spear' = 'grunt') {
     super(x, y);
-    this.sx = (0.5 + 0.125 * tier) * 60;
-    this.sy = this.sx - 60 / 16;
+    this.sx = (0.5 + 0.125 * tier) * ARCADE_HZ;
+    this.sy = this.sx - ARCADE_HZ / 16;
     this.speed = this.sx;
   }
 
@@ -522,7 +525,7 @@ export class Tank extends Enemy {
 export class Snake extends Enemy {
   hp = 2;
   score = 300;
-  speed = 72;
+  speed = 1.19 * ARCADE_HZ;
   vx = 1;
   vy = 0;
   turn = 0;

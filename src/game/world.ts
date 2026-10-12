@@ -1,6 +1,8 @@
 // Shared game-world types and arena geometry (screen coordinates, 400x256).
 
 export const DT = 1 / 60;
+/** The arcade's refresh rate: ROM speeds in px/frame and times in frames convert with it. */
+export const ARCADE_HZ = 54.71;
 
 /** The room art is drawn at this screen offset. */
 export const ROOM_X = 4;
