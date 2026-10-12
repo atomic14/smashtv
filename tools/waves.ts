@@ -55,9 +55,9 @@ export function roomWaves(rom: Rom, world: number, count: number) {
   return rooms;
 }
 
-/** Alive caps for one room with one player in, at the default difficulty. */
 const DIFFICULTY_BONUS = -1;
 
+/** Alive caps for one room with one player in, at the default difficulty. */
 export function roomCaps(rom: Rom, world: number, room: number) {
   const byte = (table: number) => rom.prog[((table - 0xffe00000) >>> 3) + room];
   const caps: Record<string, number> = {};
