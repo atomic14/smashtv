@@ -349,6 +349,9 @@ export class Game {
   /** Doors that lead somewhere: connected rooms, preferring ones not yet cleared. */
   openDoors(): DoorId[] {
     if (!this.cleared || (this.room.boss && this.boss)) return [];
+    // the world's last boss room has no way on: the next world follows
+    const last = WORLDS[this.world].bosses.at(-1)!;
+    if (this.room.col === last.col && this.room.row === last.row) return [];
     const all = DOOR_IDS.filter((d) => d !== this.entry && this.map.through(this.room.col, this.room.row, d));
     const fresh = all.filter((d) => !this.visited.has(this.map.through(this.room.col, this.room.row, d)!));
     if (fresh.length) return fresh;

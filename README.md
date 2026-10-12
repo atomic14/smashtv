@@ -51,6 +51,14 @@ debugger watchpoints) and by reading the disassembly.
   `FFE4DD00` and the player leg cycles at `FFE24A00`. Names are assigned in
   `tools/catalog.ts`.
 - **Fonts**: ASCII tables at `FFE64630` (two fonts, 93 glyphs each).
+- **World maps**: the table at `FFE72650` points at one list per world of
+  `(room descriptor, x, y)`. Arenas sit on a ~472×332 grid, and corridor pieces
+  (`FFF6C720` horizontal, `FFF6C690` vertical, `FFF6C7B0` from the studio) record which
+  rooms connect. The current list lives at RAM `010DD4E0` and the camera at `01000240/260`.
+- **Bosses**: each boss's parts share one anchor and are drawn as mirrored pairs. Cobra
+  Death and Scarface mirror their right half 5 px left of the generic flip rule, the host's
+  torso 1 px, and Mutoid Man's chassis not at all. `tools/mame/bossrun.lua` pins the lives
+  counter (RAM `01086360`), walks the room graph to each boss and records the fight.
 - **Sound**: the main CPU writes `0xFD00|cmd` then `0xFF00|cmd` to `0x01E00000`. Commands
   `01–10` are music, `11–2E`/`60–7E` are volume, and the rest are effects and speech.
   `tools/mame/sndrec.lua` drives the sound board directly, one latch write per frame, and
@@ -62,11 +70,16 @@ captured blitter display lists (`tools/mame/framelog.lua`) through a software bl
 
 ## Status
 
-**Faithful:** all art, palettes, arenas, fonts, sound effects, speech and music; the player's
-legs + torso compositing; enemy direction sets; Mutoid Man's construction (from a traced
-attract-mode frame); scrolling room transitions; exit arrows.
+**Ported from the original:**
+- All art, palettes, arenas, fonts, sound effects, speech and music.
+- The player's legs + torso compositing and the enemy direction sets.
+- The real world maps (branching room grids, `$` bonus rooms, world 3's gauntlet to the
+  finale) and scrolling room transitions with EXIT signs.
+- Prize captions.
+- All four bosses (Mutoid Man, Scarface, Cobra Death and the host). Their construction,
+  attacks and damage states come from MAME traces of the real fights
+  (`tools/mame/bossrun.lua`).
 
-**Approximated:** enemy AI, speeds, wave sizes, power-up durations and scoring are
-hand-tuned, not lifted from the original code. The room order is linear (6 rooms per
-world), not the original branching map. All three worlds end with Mutoid Man (Scarface and
-Cobra Death are extracted but not implemented), and only player 1 is supported.
+**Approximated:** regular enemy AI, speeds and wave sizes, power-up durations, scoring,
+and boss timings and hit points are hand-tuned rather than lifted from the original code.
+Only player 1 is supported.
