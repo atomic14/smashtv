@@ -66,13 +66,13 @@ export class Player implements Entity {
       mv = d < 2 ? { x: 0, y: 0 } : { x: dx / d, y: dy / d };
     }
     const md = dir8(mv);
-    const speed = (this.speedT > 0 ? 105 : 78) * Math.min(1, Math.hypot(mv.x, mv.y) * 1.4);
+    const speed = (this.speedT > 0 ? 125 : 96) * Math.min(1, Math.hypot(mv.x, mv.y) * 1.4);
     if (md >= 0) {
       this.moveDir = md;
       const v = this.auto ? mv : DIR_VEC[md];
       this.x += v.x * speed * DT;
       this.y += v.y * speed * DT;
-      this.walkT += DT * (speed / 78);
+      this.walkT += DT * (speed / 96);
     } else {
       this.walkT = 0;
     }
@@ -383,7 +383,7 @@ export abstract class Enemy implements Entity {
 
 /** Club-wielding grunt: walks straight at the player. */
 export class Grunt extends Enemy {
-  speed = rand(28, 42);
+  speed = rand(24, 36);
   r = 7;
   think(g: Game) {
     this.chase(g, 0.5);
@@ -400,7 +400,7 @@ export class Grunt extends Enemy {
 
 /** Purple spear guy: faster, takes two hits. */
 export class Spear extends Enemy {
-  speed = rand(44, 58);
+  speed = rand(38, 50);
   hp = 2;
   score = 200;
   flash = 0;
@@ -538,11 +538,12 @@ export class Tank extends Enemy {
 export class Snake extends Enemy {
   hp = 2;
   score = 300;
-  speed = 70;
+  speed = 55;
   vx = 1;
   vy = 0;
   turn = 0;
-  bodyH = 6;
+  bodyH = 11;
+  r = 12;
   think(g: Game) {
     this.turn -= DT;
     if (this.turn <= 0) {
@@ -557,6 +558,9 @@ export class Snake extends Enemy {
       }
     }
     this.step(this.vx, this.vy);
+    // hitbox follows the sprite: 23x22 slithering sideways, 10x31 slithering up/down
+    this.bodyH = this.vx !== 0 ? 11 : 15;
+    this.r = this.vx !== 0 ? 12 : 10;
     this.x = clamp(this.x, FLOOR.x0, FLOOR.x1);
     this.y = clamp(this.y, FLOOR.y0, FLOOR.y1);
   }

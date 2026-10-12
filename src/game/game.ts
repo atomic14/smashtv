@@ -336,7 +336,7 @@ export class Game {
 
   /** Enemy speed multiplier: ramps up through each world and from world to world. */
   get difficulty() {
-    return 1 + this.world * 0.15 + this.roomIdx * 0.05;
+    return 1 + this.world * 0.1 + this.roomIdx * 0.04;
   }
 
   canFire() {
