@@ -5,7 +5,7 @@
 import type { DoorId } from './world';
 
 export type EnemyKind = 'grunt' | 'spear' | 'orb' | 'mine' | 'tank' | 'snake';
-export type BossKind = 'mutoid' | 'scarface' | 'cobra';
+export type BossKind = 'mutoid' | 'scarface' | 'cobra' | 'host';
 
 export interface WorldData {
   start: { col: number; row: number };
@@ -18,13 +18,18 @@ export interface WorldDef {
   map: string;
   mapText: string;
   music: string;
-  boss: { col: number; row: number; kind: BossKind };
+  /** Boss rooms in the order they are met; the world ends when the last one falls. */
+  bosses: { col: number; row: number; kind: BossKind }[];
 }
 
 export const WORLDS: WorldDef[] = [
-  { name: 'MAP ONE', map: 'map.1', mapText: 'text.map1', music: '03', boss: { col: 4, row: 1, kind: 'mutoid' } },
-  { name: 'MAP TWO', map: 'map.2', mapText: 'text.map2', music: '03', boss: { col: 4, row: 2, kind: 'scarface' } },
-  { name: 'MAP THREE', map: 'map.3', mapText: 'text.map3', music: '03', boss: { col: 4, row: 2, kind: 'cobra' } },
+  { name: 'MAP ONE', map: 'map.1', mapText: 'text.map1', music: '03', bosses: [{ col: 4, row: 1, kind: 'mutoid' }] },
+  { name: 'MAP TWO', map: 'map.2', mapText: 'text.map2', music: '03', bosses: [{ col: 4, row: 2, kind: 'scarface' }] },
+  // past Cobra Death, two gauntlet rooms lead to the host himself
+  {
+    name: 'MAP THREE', map: 'map.3', mapText: 'text.map3', music: '03',
+    bosses: [{ col: 4, row: 2, kind: 'cobra' }, { col: 7, row: 2, kind: 'host' }],
+  },
 ];
 
 export const TITLE_ROOM = 'fff6dc10';
@@ -71,15 +76,18 @@ export class WorldMap {
     }
     for (const r of data.rooms) {
       const d = depth.get(key(r.col, r.row));
-      if (d === undefined) continue; // unreachable (e.g. beyond the boss for now)
-      const isBoss = r.col === def.boss.col && r.row === def.boss.row;
-      const kind = isBoss ? 'boss' : r.bg.startsWith('fff99') ? 'bonus' : 'arena';
+      if (d === undefined) continue;
+      const boss = def.bosses.find((b) => b.col === r.col && b.row === r.row);
+      const isBoss = !!boss;
+      // dark-blue rooms are $ bonus rooms, except on world 3's final stretch past the cobras
+      const gauntlet = r.col > def.bosses[0].col;
+      const kind = isBoss ? 'boss' : r.bg.startsWith('fff99') && !gauntlet ? 'bonus' : 'arena';
       this.rooms.set(key(r.col, r.row), {
         ...r,
         depth: d,
         kind,
-        boss: isBoss ? def.boss.kind : undefined,
-        ...roomContent(index, d, kind, isBoss ? def.boss.kind : undefined),
+        boss: boss?.kind,
+        ...roomContent(index, d, kind, boss?.kind),
       });
     }
   }

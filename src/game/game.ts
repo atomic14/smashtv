@@ -324,6 +324,12 @@ export class Game {
     audio.play(SND.buyThat);
     this.addScore(0);
     this.cleared = true;
+    const last = WORLDS[this.world].bosses.at(-1)!;
+    if (this.room.col !== last.col || this.room.row !== last.row) {
+      // more of the world beyond this boss: open the way on
+      this.after(2.5, () => this.say('TOTAL CARNAGE', 2));
+      return;
+    }
     this.after(3.5, () => {
       if (this.world + 1 >= WORLDS.length) {
         this.setState('victory');
@@ -338,7 +344,7 @@ export class Game {
 
   /** Doors that lead somewhere: connected rooms, preferring ones not yet cleared. */
   openDoors(): DoorId[] {
-    if (!this.cleared || this.room.boss) return [];
+    if (!this.cleared || (this.room.boss && this.boss)) return [];
     const all = DOOR_IDS.filter((d) => d !== this.entry && this.map.through(this.room.col, this.room.row, d));
     const fresh = all.filter((d) => !this.visited.has(this.map.through(this.room.col, this.room.row, d)!));
     if (fresh.length) return fresh;
@@ -635,7 +641,7 @@ export class Game {
     const ft = assets.frames[t[0]];
     drawFrameAt(t, Math.round(W / 2 - ft[3] / 2), 30);
     const f = this.drawWorldMap(Math.round(W / 2 - 72), 60);
-    const boss = this.map.room(w.boss.col, w.boss.row);
+    const boss = this.map.room(w.bosses[0].col, w.bosses[0].row);
     if (boss) drawText(`${boss.depth - 1} ROOMS TO THE BOSS`, W / 2, 60 + f.h + 14, 'small', 'center');
   }
 
