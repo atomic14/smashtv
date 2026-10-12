@@ -59,6 +59,20 @@ debugger watchpoints) and by reading the disassembly.
   Death and Scarface mirror their right half 5 px left of the generic flip rule, the host's
   torso 1 px, and Mutoid Man's chassis not at all. `tools/mame/bossrun.lua` pins the lives
   counter (RAM `01086360`), walks the room graph to each boss and records the fight.
+- **Waves**: each world's rooms are numbered (RAM `010EB630`); room records at
+  `FFECCE80[world]` give each room's exits and so its grid cell. The room director
+  (`FFE18150`) reads 6-word wave entries from `FFE13790[world]`:
+  `[type, count, p1, interval, p2, delay]`, timed in 3-frame ticks. Types with an init
+  routine (`FFE13380`) create `p2` at room start; each slot then counts its delay down and
+  calls the type's spawn routine (`FFE13580`). Per-room byte tables cap how many of a kind
+  may be alive (minus a margin for one player, plus a difficulty bonus). Grunts walk at
+  `0.5 + tier/8` px/frame (1/16 slower vertically, 0.8x on diagonals), and 14% of grunt
+  spawns are a squad of 7-16 through one door. Once a room's main wave is in, the game
+  waits 2s, stops the other spawners, and opens the exits when the enemies are dead.
+  `tools/waves.ts` decodes all this into `worlds.json`. The types were identified with
+  `tools/mame/waverun.lua`, which records every room's processes (list at `01000000`:
+  `+20` id, `+C0` object) and objects (lists at `01000040`/`01000060`), analysed by
+  `tools/explore/procs.ts`.
 - **Sound**: the main CPU writes `0xFD00|cmd` then `0xFF00|cmd` to `0x01E00000`. Commands
   `01–10` are music, `11–2E`/`60–7E` are volume, and the rest are effects and speech.
   `tools/mame/sndrec.lua` drives the sound board directly, one latch write per frame, and
@@ -79,7 +93,12 @@ captured blitter display lists (`tools/mame/framelog.lua`) through a software bl
 - All four bosses (Mutoid Man, Scarface, Cobra Death and the host). Their construction,
   attacks and damage states come from MAME traces of the real fights
   (`tools/mame/bossrun.lua`).
+- Every room's waves: which enemies, how many, when they start, how often they come, how
+  many may be alive at once, grunt speed tiers and squads, and when the exits open.
+  Enemies by wave type: grunts (spear guys in world 3), crabs, Mr. Shrapnel, tanks,
+  wall guns, floor mines, orb swarms, floating orbs, saucers and snakes.
 
-**Approximated:** regular enemy AI, speeds and wave sizes, power-up durations, scoring,
-and boss timings and hit points are hand-tuned rather than lifted from the original code.
+**Approximated:** individual enemy behaviour beyond speed and heading (Mr. Shrapnel's
+burst, the turrets' fire rate, swarm motion), power-up durations, scoring, and boss
+timings and hit points are hand-tuned rather than lifted from the original code.
 Only player 1 is supported.

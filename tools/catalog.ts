@@ -91,6 +91,33 @@ export const CATALOG: Record<string, Ref[]> = {
   'tank.d2': [425],
   'tank.all': [422, 429, 430, 423, 424, 428, 425, 427, 426, 427, 425, 428, 424, 423, 430, 429],
   'gunner': [407, 410, 412, 414, 408, 416, 418, 420, 409, 420, 418, 416, 408, 414, 412, 410],
+  // ---- crabs (world 2+ walkers, process 114): one image per heading, matched from MAME
+  // recordings; the right-facing headings are the left ones mirrored ----
+  'crab.gold.d': [270],
+  'crab.gold.dl': [271],
+  'crab.gold.l': [272],
+  'crab.gold.ul': [273],
+  'crab.gold.u': [274],
+  'crab.gold.dr': ['271f'],
+  'crab.gold.r': ['272f'],
+  'crab.gold.ur': ['273f'],
+  'crab.red.d': [789],
+  'crab.red.dl': [791],
+  'crab.red.l': [788],
+  'crab.red.ul': [790],
+  'crab.red.u': [787],
+  'crab.red.dr': ['791f'],
+  'crab.red.r': ['788f'],
+  'crab.red.ur': ['790f'],
+  // ---- Mr. Shrapnel (process F0): walks in the four straight directions ----
+  'shrapnel.d': [358, 359, 360, 361, 362, 361, 360, 359],
+  'shrapnel.l': [364, 365, 366, 367, 368, 367, 366, 365],
+  'shrapnel.r': ['364f', '365f', '366f', '367f', '368f', '367f', '366f', '365f'],
+  'shrapnel.u': [369, 370, 371, 372, 373, 372, 371, 370],
+  // ---- orb swarm (process 116/902/903): a leader trailed by twenty small orbs ----
+  'swarm.bit': [1125],
+  // ---- grey floor mine (process 100) ----
+  'floormine': [597],
   'bossorb.purple': seq(1107, 1111),
   'bossorb.green': seq(1112, 1116),
   'bossorb.red': seq(1117, 1122),

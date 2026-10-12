@@ -4,24 +4,21 @@ import { input } from '../input';
 import { audio, SND } from '../audio';
 import { DT, ROOM_X, ROOM_Y, FLOOR, DOORS, DOOR_IDS, type DoorId, rand, irand, pick, clamp } from './world';
 import {
-  Player, Shot, Effect, Enemy, Grunt, Spear, Orb, Mine, SpikeMine, Tank, Snake, Pickup,
+  Player, Shot, Effect, Enemy, Grunt, Snake, Pickup,
   POWERUPS, PRIZES, type PickupKind, type Entity,
 } from './entities';
 import { Boss, MutoidMan } from './boss';
 import { CobraDeath } from './cobra';
 import { Scarface } from './scarface';
 import { Host } from './host';
-import { WORLDS, TITLE_ROOM, STUDIO_ROOM, WorldMap, mapCell, type EnemyKind, type RoomDef } from './levels';
+import { WORLDS, TITLE_ROOM, STUDIO_ROOM, WorldMap, mapCell, type RoomDef } from './levels';
+import { WaveDirector } from './waves';
+import { Crab } from './enemies';
 
 type State = 'title' | 'intro' | 'map' | 'play' | 'transition' | 'continue' | 'gameover' | 'victory';
 
 const OPPOSITE: Record<DoorId, DoorId> = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
 const FLOOR_COLOR = '#313131'; // palette entry 0x3D (0x18C6), the arena autoerase colour
-
-interface SpawnGroup {
-  kind: EnemyKind;
-  count: number;
-}
 
 export class Game {
   state: State = 'title';
@@ -38,9 +35,9 @@ export class Game {
   visited = new Set<RoomDef>();
   roomsCleared = 0;
   room!: RoomDef;
-  queue: SpawnGroup[] = [];
+  /** Runs the room's original waves (null in rooms already cleared). */
+  director: WaveDirector | null = null;
   pending: { at: number; enemy: Enemy }[] = [];
-  spawnT = 0;
   pickupT = 0;
   cleared = false;
   clearT = 0;
@@ -108,9 +105,7 @@ export class Game {
     this.cleared = false;
     this.clearT = 0;
     this.entry = entry;
-    this.spawnT = 2;
     this.pickupT = rand(4, 7);
-    this.queue = revisit ? [] : buildQueue(this.room);
     const p = this.player;
     p.exiting = null;
     p.dying = 0;
@@ -126,6 +121,7 @@ export class Game {
       p.auto = null;
       p.invuln = 2.5;
     }
+    this.director = revisit ? null : new WaveDirector(this, this.room);
     if (revisit) {
       this.cleared = true;
     } else if (this.room.boss) {
@@ -256,7 +252,7 @@ export class Game {
     }
 
     const bossDone = !this.room.boss || (this.bossSpawned && !this.boss);
-    if (!this.cleared && bossDone && this.queue.length === 0 && this.pending.length === 0 && !this.enemies.some((e) => e.counts)) {
+    if (!this.cleared && bossDone && (this.director?.finished ?? true) && this.pending.length === 0 && !this.enemies.some((e) => e.counts)) {
       this.roomCleared();
     }
     if (this.cleared) this.clearT += DT;
@@ -275,40 +271,10 @@ export class Game {
       this.boss =
         kind === 'cobra' ? new CobraDeath() : kind === 'scarface' ? new Scarface() : kind === 'host' ? new Host() : new MutoidMan();
       this.enemies.push(this.boss);
-      for (let i = 0; i < (this.room.boss === 'cobra' ? 0 : 6); i++) {
-        const m = new SpikeMine(rand(FLOOR.x0 + 30, FLOOR.x1 - 30), rand(FLOOR.y0 + 40, FLOOR.y1 - 10));
-        m.entering = false;
-        if (Math.hypot(m.x - this.player.x, m.y - this.player.y) > 50) this.enemies.push(m);
-      }
       audio.play(SND.explode);
       this.shake = 0.5;
     }
-    const alive = this.enemies.filter((e) => e.counts).length;
-    if (this.queue.length === 0 || alive > 45) return;
-    if ((this.spawnT -= DT) > 0) return;
-    this.spawnT = this.room.pace * rand(0.7, 1.3);
-    const g = this.queue.shift()!;
-    const doors = DOOR_IDS.filter((d) => {
-      const dd = DOORS[d];
-      return Math.hypot(dd.ix - this.player.x, dd.iy - this.player.y) > 60;
-    });
-    const door = pick(doors.length ? doors : DOOR_IDS);
-    for (let i = 0; i < g.count; i++) {
-      const e = makeEnemy(g.kind);
-      e.speed *= this.difficulty;
-      if (g.kind === 'mine' || g.kind === 'orb') {
-        // these materialise inside the arena
-        e.entering = false;
-        do {
-          e.x = rand(FLOOR.x0 + 16, FLOOR.x1 - 16);
-          e.y = rand(FLOOR.y0 + 16, FLOOR.y1 - 8);
-        } while (Math.hypot(e.x - this.player.x, e.y - this.player.y) < 60);
-        this.effects.push(new Effect('puff', e.x, e.y, 18));
-      } else {
-        e.enterFrom(door);
-      }
-      this.pending.push({ at: now + i * 0.18, enemy: e });
-    }
+    this.director?.update(DT);
   }
 
   private roomCleared() {
@@ -384,11 +350,6 @@ export class Game {
     this.effects = [];
     this.pickups = [];
     this.setState('transition');
-  }
-
-  /** Enemy speed multiplier: ramps up through each world and from world to world. */
-  get difficulty() {
-    return 1 + this.world * 0.1 + Math.max(0, (this.room?.depth ?? 1) - 1) * 0.04;
   }
 
   canFire() {
@@ -691,38 +652,9 @@ export class Game {
   }
 }
 
-function buildQueue(room: RoomDef): SpawnGroup[] {
-  const groups: SpawnGroup[] = [];
-  const size: Record<EnemyKind, [number, number]> = {
-    grunt: [4, 8], spear: [3, 5], orb: [1, 3], mine: [3, 5], tank: [1, 1], snake: [2, 4],
-  };
-  for (const [kind, total] of Object.entries(room.enemies) as [EnemyKind, number][]) {
-    let left = total;
-    while (left > 0) {
-      const n = Math.min(left, irand(...size[kind]));
-      groups.push({ kind, count: n });
-      left -= n;
-    }
-  }
-  // shuffle, but keep the heavy hitters out of the opening seconds
-  for (let i = groups.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [groups[i], groups[j]] = [groups[j], groups[i]];
-  }
-  groups.sort((a, b) => (a.kind === 'tank' ? 1 : 0) - (b.kind === 'tank' ? 1 : 0) || 0);
-  const firstTank = groups.findIndex((g) => g.kind === 'tank');
-  if (firstTank >= 0) {
-    // spread tanks through the second half of the room
-    const tanks = groups.splice(firstTank);
-    const half = Math.floor(groups.length / 2);
-    tanks.forEach((t, i) => groups.splice(half + Math.floor(((groups.length - half) * (i + 1)) / (tanks.length + 1)), 0, t));
-  }
-  return groups;
-}
-
 /** Nudge walking enemies apart so crowds spread out instead of collapsing onto one spot. */
 function separate(list: Enemy[]) {
-  const walkers = list.filter((e) => !e.entering && (e instanceof Grunt || e instanceof Spear || e instanceof Snake));
+  const walkers = list.filter((e) => !e.entering && (e instanceof Grunt || e instanceof Crab || e instanceof Snake));
   for (let i = 0; i < walkers.length; i++) {
     const a = walkers[i];
     for (let j = i + 1; j < walkers.length; j++) {
@@ -739,17 +671,6 @@ function separate(list: Enemy[]) {
         b.x += rand(-1, 1);
       }
     }
-  }
-}
-
-function makeEnemy(kind: EnemyKind): Enemy {
-  switch (kind) {
-    case 'grunt': return new Grunt(0, 0);
-    case 'spear': return new Spear(0, 0);
-    case 'orb': return new Orb(0, 0);
-    case 'mine': return new Mine(0, 0);
-    case 'tank': return new Tank(0, 0);
-    case 'snake': return new Snake(0, 0);
   }
 }
 

@@ -9,6 +9,7 @@ import { PNG } from 'pngjs';
 import { loadRom, scanHeaders, scanPlainHeaders, decodeIndices, readPalette, u16, u32, type ImageHeader } from './rom';
 import { scanRooms, renderRoom } from './rooms';
 import { CATALOG, FONT_BIG, FONT_SMALL } from './catalog';
+import { roomCells, roomWaves, roomCaps } from './waves';
 
 const zip = process.argv[2];
 if (!zip) {
@@ -132,10 +133,17 @@ for (let w = 0; w < 3; w++) {
     else if (d === 0xfff6c7b0) links.push([-1, row, 0, row]);
     else if (Math.abs(fr - row) < 0.05 && roomIndex[hex(d)]) cells.push({ bg: hex(d), col, row });
   }
-  worlds.push({ start, rooms: cells, links });
+  // room numbers, waves and alive caps (see tools/waves.ts)
+  const numbers = roomCells(rom, w, start);
+  const waves = roomWaves(rom, w, Math.max(...numbers.keys()));
+  const rooms = cells.map((c) => {
+    const n = [...numbers].find(([, v]) => v.col === c.col && v.row === c.row)?.[0];
+    return n ? { ...c, n, waves: waves[n - 1], caps: roomCaps(rom, w, n) } : c;
+  });
+  worlds.push({ start, rooms, links });
 }
 writeFileSync(`${OUT}/worlds.json`, JSON.stringify(worlds));
-console.log(`worlds: ${worlds.map((w) => w.rooms.length).join('/')} rooms`);
+console.log(`worlds: ${worlds.map((w) => w.rooms.length).join('/')} rooms, ${worlds.map((w) => w.rooms.filter((r) => 'n' in r).length).join('/')} with waves`);
 
 function nextPow2(n: number) {
   let p = 1;

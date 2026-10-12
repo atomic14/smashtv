@@ -4,12 +4,14 @@
 
 import type { DoorId } from './world';
 
-export type EnemyKind = 'grunt' | 'spear' | 'orb' | 'mine' | 'tank' | 'snake';
 export type BossKind = 'mutoid' | 'scarface' | 'cobra' | 'host';
+
+/** One wave slot from the ROM: [type, count, p1, interval, p2, delay] (see tools/waves.ts). */
+export type WaveSlot = [number, number, number, number, number, number];
 
 export interface WorldData {
   start: { col: number; row: number };
-  rooms: { bg: string; col: number; row: number }[];
+  rooms: { bg: string; col: number; row: number; n?: number; waves?: WaveSlot[]; caps?: Record<string, number> }[];
   links: [number, number, number, number][];
 }
 
@@ -43,9 +45,11 @@ export interface RoomDef {
   depth: number;
   kind: 'arena' | 'bonus' | 'boss';
   boss?: BossKind;
-  enemies: Partial<Record<EnemyKind, number>>;
-  /** Seconds between spawn groups. */
-  pace: number;
+  /** The original's room number within the world (RAM 10EB630). */
+  n: number;
+  waves: WaveSlot[];
+  /** Most of a kind alive at once (grunt, tank, type4, ...). */
+  caps: Record<string, number>;
 }
 
 export class WorldMap {
@@ -87,7 +91,9 @@ export class WorldMap {
         depth: d,
         kind,
         boss: boss?.kind,
-        ...roomContent(index, d, kind, boss?.kind),
+        n: r.n ?? 0,
+        waves: r.waves ?? [],
+        caps: r.caps ?? {},
       });
     }
   }
@@ -148,30 +154,6 @@ export const DOOR_STEP: Record<DoorId, [number, number]> = {
 };
 
 const key = (c: number, r: number) => `${c},${r}`;
-
-/** Enemy mix for a room: escalates with corridor depth and world, like the original. */
-function roomContent(world: number, depth: number, kind: RoomDef['kind'], boss?: BossKind) {
-  const d = depth - 1; // first arena is depth 1
-  const enemies: Partial<Record<EnemyKind, number>> = {};
-  if (kind === 'boss') {
-    enemies.grunt = 16 + world * 8;
-    if (boss === 'cobra') enemies.snake = 10;
-    else if (world > 0) enemies.spear = 10;
-    return { enemies, pace: 2.4 };
-  }
-  if (kind === 'bonus') {
-    enemies.grunt = 20 + world * 10;
-    enemies.orb = 4;
-    return { enemies, pace: 1.6 };
-  }
-  enemies.grunt = 36 + d * 8 + world * 10;
-  if (d >= 1 || world > 0) enemies.spear = 6 + d * 4 + world * 6;
-  if (d >= 1) enemies.orb = 2 + d * 2;
-  if (d >= 2) enemies.mine = 6 + d * 2;
-  if (d >= 3 || world > 0) enemies.tank = Math.min(4, Math.max(1, d - 2 + world));
-  if (world === 2) enemies.snake = 10 + d * 4;
-  return { enemies, pace: Math.max(0.9, 1.8 - d * 0.12 - world * 0.15) };
-}
 
 /** Map art geometry: 6x5 cells; the art has a spare top row and the studio is column -1. */
 export function mapCell(col: number, row: number) {

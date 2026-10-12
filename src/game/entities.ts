@@ -386,44 +386,45 @@ export abstract class Enemy implements Entity {
   abstract die(g: Game, from: Vec): void;
 }
 
-/** Club-wielding grunt: walks straight at the player. */
+/**
+ * Club-wielding grunt: walks at the player in 8 directions. Its wave's speed tier sets the
+ * across speed (0.5 + tier/8 px/frame); up/down is 1/16 px/frame slower and diagonals
+ * are 0.8x of each (FFE3EC30).
+ */
 export class Grunt extends Enemy {
-  speed = rand(24, 36);
   r = 7;
+  sx: number;
+  sy: number;
+
+  /** 'spear' in world 3, where the same wave type uses the purple spear guys' art. */
+  constructor(x: number, y: number, tier = 0, public skin: 'grunt' | 'spear' = 'grunt') {
+    super(x, y);
+    this.sx = (0.5 + 0.125 * tier) * 60;
+    this.sy = this.sx - 60 / 16;
+    this.speed = this.sx;
+  }
+
   think(g: Game) {
-    this.chase(g, 0.5);
+    const p = g.player;
+    const dx = p.x - this.x + Math.sin(this.t * 2 + this.x) * 15;
+    const dy = p.y - this.y + Math.cos(this.t * 2 + this.y) * 15;
+    const d = Math.hypot(dx, dy) || 1;
+    const ax = Math.abs(dx / d) > 0.38 ? Math.sign(dx) : 0;
+    const ay = Math.abs(dy / d) > 0.38 ? Math.sign(dy) : 0;
+    const k = ax && ay ? 0.8 : 1;
+    this.x = clamp(this.x + ax * this.sx * k * DT, FLOOR.x0 - 10, FLOOR.x1 + 10);
+    this.y = clamp(this.y + ay * this.sy * k * DT, FLOOR.y0 - 6, FLOOR.y1 + 4);
+    const dir = dir8({ x: ax, y: ay }, 0.01);
+    if (dir >= 0) this.dir = dir;
   }
   draw() {
-    drawAt(`grunt.${DIR_NAME[this.dir]}`, Math.floor(this.t * 10), this.x, this.y, 'grunt.d');
+    drawAt(`${this.skin}.${DIR_NAME[this.dir]}`, Math.floor(this.t * 10), this.x, this.y, `${this.skin}.d`);
   }
   die(g: Game, from: Vec) {
     audio.play(SND.splat, { overlap: true, volume: 0.8 });
-    g.effects.push(new Effect(Math.random() < 0.5 ? 'grunt.die' : 'grunt.blast', this.x, this.y, 16, from.x * 60, from.y * 60));
+    if (this.skin === 'spear') g.effects.push(new Effect('spear.die', this.x, this.y, 18));
+    else g.effects.push(new Effect(Math.random() < 0.5 ? 'grunt.die' : 'grunt.blast', this.x, this.y, 16, from.x * 60, from.y * 60));
     g.maybeDrop(this.x, this.y, 0.015);
-  }
-}
-
-/** Purple spear guy: faster, takes two hits. */
-export class Spear extends Enemy {
-  speed = rand(38, 50);
-  hp = 2;
-  score = 200;
-  flash = 0;
-  think(g: Game) {
-    this.flash = Math.max(0, this.flash - DT);
-    this.chase(g, 0.25);
-  }
-  onHit() {
-    this.flash = 0.08;
-  }
-  draw() {
-    if (this.flash > 0 && Math.floor(this.flash * 60) % 2) return;
-    drawAt(`spear.${DIR_NAME[this.dir]}`, Math.floor(this.t * 12), this.x, this.y, 'spear.d');
-  }
-  die(g: Game) {
-    audio.play(SND.hit, { overlap: true, volume: 0.8 });
-    g.effects.push(new Effect('spear.die', this.x, this.y, 18));
-    g.maybeDrop(this.x, this.y, 0.05);
   }
 }
 
@@ -466,44 +467,6 @@ export class Orb extends Enemy {
   }
   die(g: Game) {
     g.explode(this.x, this.y - 6, 0, 0, false);
-  }
-}
-
-/** Spinning mine: stationary, blocks movement. */
-export class Mine extends Enemy {
-  score = 50;
-  counts = false;
-  bodyH = 8;
-  r = 7;
-  life = rand(14, 22);
-  think(g: Game) {
-    this.life -= DT;
-    if (this.life <= 0) {
-      this.dead = true;
-      g.effects.push(new Effect('puff', this.x, this.y, 14));
-    }
-  }
-  draw() {
-    drawAt('mine', Math.floor(this.t * 10), this.x, this.y);
-  }
-  die(g: Game) {
-    g.explode(this.x, this.y - 4, 0, 0, false);
-  }
-}
-
-/** Spiked floor mine scattered around boss arenas: static, deadly to touch, shootable. */
-export class SpikeMine extends Enemy {
-  score = 100;
-  counts = false;
-  hp = 2;
-  bodyH = 7;
-  r = 7;
-  think() {}
-  draw() {
-    drawAt('mine.spike', 0, this.x, this.y);
-  }
-  die(g: Game) {
-    g.explode(this.x, this.y - 4, 0, 0, false);
   }
 }
 
@@ -555,11 +518,11 @@ export class Tank extends Enemy {
   }
 }
 
-/** Snake (jungle levels): slithers in straight lines, turning towards the player. */
+/** Snake (wave type 16): slithers in straight lines at ~1.2 px/frame, turning towards the player. */
 export class Snake extends Enemy {
   hp = 2;
   score = 300;
-  speed = 55;
+  speed = 72;
   vx = 1;
   vy = 0;
   turn = 0;
