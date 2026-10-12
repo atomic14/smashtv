@@ -15,9 +15,10 @@ local OUT = os.getenv("OUT") or "boss"
 
 -- corridors (col,row,col,row) and boss cells per world, from public/assets/worlds.json
 local WORLD = {
-  { boss = { 4, 1 }, links = "1,0,2,0;2,0,3,0;-1,1,0,1;0,1,1,1;2,1,3,1;3,1,4,1;1,2,2,2;1,0,1,1;2,0,2,1;3,0,3,1;1,1,1,2;2,1,2,2" },
-  { boss = { 4, 2 }, links = "2,0,3,0;0,1,1,1;1,1,2,1;2,1,3,1;-1,2,0,2;0,2,1,2;1,2,2,2;3,2,4,2;0,3,1,3;1,3,2,3;2,3,3,3;2,4,3,4;2,0,2,1;3,0,3,1;0,1,0,2;1,1,1,2;2,1,2,2;3,1,3,2;0,2,0,3;1,2,1,3;2,2,2,3;3,2,3,3;2,3,2,4;3,3,3,4" },
-  { boss = { 4, 2 }, links = "2,0,3,0;0,1,1,1;1,1,2,1;2,1,3,1;-1,2,0,2;0,2,1,2;1,2,2,2;3,2,4,2;4,2,5,2;5,2,6,2;6,2,7,2;0,3,1,3;1,3,2,3;2,3,3,3;2,4,3,4;2,0,2,1;3,0,3,1;0,1,0,2;1,1,1,2;2,1,2,2;3,1,3,2;0,2,0,3;1,2,1,3;2,2,2,3;3,2,3,3;6,2,6,3;2,3,2,4;3,3,3,4" },
+  { goals = { { 4, 1 } }, links = "1,0,2,0;2,0,3,0;-1,1,0,1;0,1,1,1;2,1,3,1;3,1,4,1;1,2,2,2;1,0,1,1;2,0,2,1;3,0,3,1;1,1,1,2;2,1,2,2" },
+  { goals = { { 4, 2 } }, links = "2,0,3,0;0,1,1,1;1,1,2,1;2,1,3,1;-1,2,0,2;0,2,1,2;1,2,2,2;3,2,4,2;0,3,1,3;1,3,2,3;2,3,3,3;2,4,3,4;2,0,2,1;3,0,3,1;0,1,0,2;1,1,1,2;2,1,2,2;3,1,3,2;0,2,0,3;1,2,1,3;2,2,2,3;3,2,3,3;2,3,2,4;3,3,3,4" },
+  -- world 3: Cobra Death, then on through the gauntlet to the host at (7,2)
+  { goals = { { 4, 2 }, { 7, 2 } }, links = "2,0,3,0;0,1,1,1;1,1,2,1;2,1,3,1;-1,2,0,2;0,2,1,2;1,2,2,2;3,2,4,2;4,2,5,2;5,2,6,2;6,2,7,2;0,3,1,3;1,3,2,3;2,3,3,3;2,4,3,4;2,0,2,1;3,0,3,1;0,1,0,2;1,1,1,2;2,1,2,2;3,1,3,2;0,2,0,3;1,2,1,3;2,2,2,3;3,2,3,3;6,2,6,3;2,3,2,4;3,3,3,4" },
 }
 local LISTS = { 0xffe726b0, 0xffe72d10, 0xffe737f0 }
 for _, w in ipairs(WORLD) do
@@ -40,8 +41,8 @@ local function setin(name, v)
 end
 
 -- shortest-path first step from cell (c,r) to the boss, as a door letter
-local function firstStep(w, c, r)
-  local goal = w.boss[1] .. "," .. w.boss[2]
+local function firstStep(w, c, r, g)
+  local goal = g[1] .. "," .. g[2]
   local start = c .. "," .. r
   local prev, queue = { [start] = false }, { { c, r } }
   while #queue > 0 do
@@ -103,7 +104,7 @@ local DOOR = { R = { x = 400, y = 150 }, L = { x = 0, y = 150 }, U = { x = 205, 
 local ORDER = { "R", "D", "U", "L" }
 local MOVE = { "P1 Move Up", "P1 Move Down", "P1 Move Left", "P1 Move Right" }
 local FIRE = { "P1 Fire Up", "P1 Fire Down", "P1 Fire Left", "P1 Fire Right" }
-local cellKey, exitFrames, curWorld = "", 0, 0
+local cellKey, exitFrames, curWorld, goal = "", 0, 0, 1
 
 emu.register_frame_done(function()
   frame = frame + 1
@@ -118,26 +119,35 @@ emu.register_frame_done(function()
   if frame < 1500 then return end
   sp:write_u16(0x01086360, 5)
 
-  local world = sp:read_u16(0x010eb610)
+  -- which world's room list is active (the world number in RAM is not a reliable guide)
+  local list, world = r32(0x010dd4e0), 0
+  for i, l in ipairs(LISTS) do if l == list then world = i end end
   local W = WORLD[world]
-  if world ~= curWorld then
-    print(string.format("frame %d world %d", frame, world))
+  if world ~= 0 and world ~= curWorld then
+    print(string.format("frame %d world %d (ram %d)", frame, world, sp:read_u16(0x010eb610)))
     if recording then out:close(); recording = false end
     curWorld = world
-    if world > LAST or not W then manager.machine:exit() return end
+    goal = 1
+    if world > LAST then manager.machine:exit() return end
   end
   local camX, camY = r32(0x01000240) >> 16, r32(0x01000260) >> 16
   local col = math.floor((camX - 472) / 472.25 + 0.5)
   local row = math.floor((camY - 5) / 332.4 + 0.5)
   local k = col .. "," .. row
   if k ~= cellKey then
+    -- leaving a goal room means that goal is done
+    local g = W and W.goals[goal]
+    if g and cellKey == g[1] .. "," .. g[2] then goal = goal + 1 end
     cellKey = k
     exitFrames = 0
     print(string.format("frame %d cell %s", frame, k))
-    if W and col == W.boss[1] and row == W.boss[2] and not recording then
-      out = io.open(string.format("%s_w%d.jsonl", OUT, world), "w")
-      recording, recStart = true, frame
-      print("recording boss of world " .. world)
+    for _, gg in ipairs(W and W.goals or {}) do
+      if col == gg[1] and row == gg[2] and not recording then
+        if out then out:close() end
+        out = io.open(string.format("%s_w%d_%d_%d.jsonl", OUT, world, col, row), "w")
+        recording, recStart = true, frame
+        print("recording " .. k .. " of world " .. world)
+      end
     end
   end
 
@@ -155,7 +165,7 @@ emu.register_frame_done(function()
     local target
     if exits and W then
       exitFrames = exitFrames + 1
-      local choice = firstStep(W, col, row) or "R"
+      local choice = W.goals[goal] and firstStep(W, col, row, W.goals[goal]) or "R"
       local tries = exitFrames // 1200
       if tries > 0 then choice = ORDER[(tries - 1) % 4 + 1] end
       local d = DOOR[choice]
@@ -184,10 +194,10 @@ emu.register_frame_done(function()
       paldirty = false
     end
     out:write(string.format('{"frame":%d,"blits":[%s]%s}\n', frame, table.concat(blits, ","), ps))
-    if frame - recStart > RECORD then out:close(); recording = false end
+    if frame - recStart > RECORD then out:close(); out = nil; recording = false end
   end
   blits = {}
   feet, exits = nil, false
   bigX, bigY, bigN = 0, 0, 0
-  if frame > 400000 then manager.machine:exit() end
+  if frame > 700000 then manager.machine:exit() end
 end)

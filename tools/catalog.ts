@@ -1,10 +1,24 @@
 // Names for the images found in the ROM. Numbers index the 16-byte header scan
 // (scanHeaders order); 'p<n>' indexes the 12-byte system-palette scan (player parts).
-// A trailing 'f' (e.g. '829f') means horizontally flipped.
+// A trailing 'f' (e.g. '829f') means horizontally flipped; 'a~b' is image a drawn with
+// header b's palette (the game recolours some art at runtime, e.g. the blue cobra).
 // Groupings follow the game's own animation and direction tables where they were found
 // (e.g. grunt directions from the table at FFE4DD00, legs from FFE24A00..FFE25870).
 
 type Ref = number | string;
+
+/** Cobra parts, optionally recoloured with another header's palette. */
+function cobra(prefix: string, pal: string): Record<string, Ref[]> {
+  const r = (ids: number[]) => ids.map((i) => `${i}${pal}`);
+  return {
+    [`${prefix}.head`]: r([1126, 1127, 1128]),
+    [`${prefix}.jaw`]: r([1129, 1130, 1131, 1132]),
+    [`${prefix}.rear`]: r([1134, 1135]),
+    [`${prefix}.body`]: r([1133]),
+    [`${prefix}.root`]: r([1147]),
+    [`${prefix}.flash`]: [1126 + '~1143'],
+  };
+}
 const seq = (a: number, b: number, suffix = ''): Ref[] =>
   Array.from({ length: b - a + 1 }, (_, i) => (suffix ? `${a + i}${suffix}` : a + i));
 const pseq = (a: number, b: number, flip = false): Ref[] =>
@@ -97,6 +111,11 @@ export const CATALOG: Record<string, Ref[]> = {
   'mutoid.spark': [951, 952],
   'boss.pellet': [648],
   'mine.spike': [598],
+  // ---- Cobra Death (world 3): two cobras rising from pits; mirrored head halves ----
+  ...cobra('cobra', ''),
+  ...cobra('cobra.blue', '~1140'),
+  'cobra.flame': seq(518, 526),
+  'cobra.fire': seq(527, 529),
   // ---- shots and effects ----
   'shot.v': [601],
   'shot.d': [599],

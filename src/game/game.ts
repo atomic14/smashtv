@@ -7,7 +7,8 @@ import {
   Player, Shot, Effect, Enemy, Grunt, Spear, Orb, Mine, SpikeMine, Tank, Snake, Pickup,
   POWERUPS, PRIZES, type PickupKind, type Entity,
 } from './entities';
-import { MutoidMan } from './boss';
+import { Boss, MutoidMan } from './boss';
+import { CobraDeath } from './cobra';
 import { WORLDS, TITLE_ROOM, STUDIO_ROOM, WorldMap, mapCell, type EnemyKind, type RoomDef } from './levels';
 
 type State = 'title' | 'intro' | 'map' | 'play' | 'transition' | 'continue' | 'gameover' | 'victory';
@@ -42,7 +43,7 @@ export class Game {
   cleared = false;
   clearT = 0;
   entry: DoorId | null = null;
-  boss: MutoidMan | null = null;
+  boss: Boss | null = null;
   bossSpawned = false;
   /** Callbacks scheduled in game time (so they respect pause). */
   timers: { at: number; fn: () => void }[] = [];
@@ -265,9 +266,9 @@ export class Game {
     }
     if (this.room.boss && !this.bossSpawned && this.stateT > 2.5) {
       this.bossSpawned = true;
-      this.boss = new MutoidMan();
+      this.boss = this.room.boss === 'cobra' ? new CobraDeath() : new MutoidMan();
       this.enemies.push(this.boss);
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < (this.room.boss === 'cobra' ? 0 : 6); i++) {
         const m = new SpikeMine(rand(FLOOR.x0 + 30, FLOOR.x1 - 30), rand(FLOOR.y0 + 40, FLOOR.y1 - 10));
         m.entering = false;
         if (Math.hypot(m.x - this.player.x, m.y - this.player.y) > 50) this.enemies.push(m);
@@ -314,9 +315,9 @@ export class Game {
     this.after(1.1, () => audio.play(SND.loveIt));
   }
 
-  bossDefeated(_b: MutoidMan) {
+  bossDefeated(b: Boss) {
     this.boss = null;
-    this.say('MUTOID MAN DESTROYED', 3);
+    this.say(`${b.title} DESTROYED`, 3);
     audio.play(SND.buyThat);
     this.addScore(0);
     this.cleared = true;
@@ -403,7 +404,7 @@ export class Game {
     for (const e of this.enemies) {
       const dx = e.x - p.x, dy = e.y - p.y;
       const d = Math.hypot(dx, dy);
-      if (d < 70 && !(e instanceof MutoidMan)) {
+      if (d < 70 && !(e instanceof Boss)) {
         e.x = clamp(p.x + (dx / (d || 1)) * 90, FLOOR.x0, FLOOR.x1);
         e.y = clamp(p.y + (dy / (d || 1)) * 70, FLOOR.y0, FLOOR.y1);
       }
@@ -471,7 +472,7 @@ export class Game {
       case 'bomb':
         audio.play(SND.explode);
         this.shake = 0.5;
-        for (const e of this.enemies) if (!e.dead && e.shootable && !(e instanceof MutoidMan)) e.damage(this, 99, { x: 0, y: 0 });
+        for (const e of this.enemies) if (!e.dead && e.shootable && !(e instanceof Boss)) e.damage(this, 99, { x: 0, y: 0 });
         break;
       case 'cash':
         this.addScore(irand(1, 5) * 1000);

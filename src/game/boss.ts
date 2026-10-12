@@ -10,7 +10,47 @@ import type { Game } from './game';
 
 const FEET = 128; // anchor-to-tread-bottom distance in the art
 
-export class MutoidMan extends Enemy {
+/** A world boss: has a health bar, a death sequence, and ends the world when destroyed. */
+export abstract class Boss extends Enemy {
+  abstract readonly title: string;
+  maxHp = 1;
+  dying = 0;
+
+  /** Remaining health 0..1 for the HUD bar. */
+  get health() {
+    return Math.max(0, this.hp / this.maxHp);
+  }
+
+  /** Where the death explosions go off. */
+  abstract explosionPoint(): { x: number; y: number };
+
+  update(g: Game) {
+    if (this.dying > 0) {
+      this.dying -= DT;
+      if (Math.random() < 0.3) {
+        const p = this.explosionPoint();
+        g.explode(p.x, p.y, 0, 0, false, 0);
+      }
+      if (this.dying <= 0) {
+        this.dead = true;
+        g.bossDefeated(this);
+      }
+      return;
+    }
+    super.update(g);
+  }
+
+  startDying(g: Game) {
+    this.shootable = false;
+    this.lethal = false;
+    this.dying = 2.5;
+    audio.play(SND.explode);
+    g.addScore(this.score);
+  }
+}
+
+export class MutoidMan extends Boss {
+  readonly title = 'MUTOID MAN';
   hp = 160;
   maxHp = 160;
   score = 50000;
@@ -22,7 +62,6 @@ export class MutoidMan extends Enemy {
   shootCd = 2.5;
   boltCd = 4;
   flash = 0;
-  dying = 0;
   goal = { x: 201, y: 240 };
   bolt: Bolt | null = null;
 
@@ -33,17 +72,13 @@ export class MutoidMan extends Enemy {
     this.entering = true;
   }
 
+  explosionPoint() {
+    return { x: this.x + rand(-34, 34), y: this.y - rand(10, 110) };
+  }
+
   update(g: Game) {
-    if (this.dying > 0) {
-      this.dying -= DT;
-      if (Math.random() < 0.3) g.explode(this.x + rand(-34, 34), this.y - rand(10, 110), 0, 0, false, 0);
-      if (this.dying <= 0) {
-        this.dead = true;
-        g.bossDefeated(this);
-      }
-      return;
-    }
     super.update(g);
+    if (this.dying > 0) return;
     if (this.bolt) {
       this.bolt.update(g);
       if (this.bolt.done) this.bolt = null;
@@ -99,14 +134,8 @@ export class MutoidMan extends Enemy {
     this.hp -= n;
     this.flash = 0.05;
     if (Math.random() < 0.2) audio.play(SND.hit, { volume: 0.5 });
-    if (this.hp <= 0) {
-      this.shootable = false;
-      this.lethal = false;
-      this.dying = 2.5;
-      audio.play(SND.explode);
-      g.addScore(this.score);
-      void from;
-    }
+    if (this.hp <= 0) this.startDying(g);
+    void from;
   }
 
   die() {}
@@ -134,11 +163,6 @@ export class MutoidMan extends Enemy {
     const heads = hurt ? anim('mutoid.head.hurt') : anim('mutoid.head');
     if (!(this.flash > 0)) drawFrame(heads[Math.floor(this.t * 3) % heads.length], X, Y);
     else drawFrame(heads[0], X, Y, 0.5);
-  }
-
-  /** Remaining health 0..1 for the HUD bar. */
-  get health() {
-    return Math.max(0, this.hp / this.maxHp);
   }
 }
 
