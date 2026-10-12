@@ -12,8 +12,8 @@
 // routine (FFE13580[type-1]). Spawning decrements `count`; a slot with count 0 is idle.
 //
 // The setup also caps how many of some types may be alive at once, from per-room byte
-// tables (minus a margin when only one player is in, plus a difficulty bonus that is 0 at
-// the default setting).
+// tables (minus a margin when only one player is in). The grunt and crab caps also get a
+// difficulty bonus (table FFE10460), -1 at the default setting as seen in MAME.
 import { u16, u32, type Rom } from './rom';
 
 export type Slot = [type: number, count: number, p1: number, interval: number, p2: number, delay: number];
@@ -56,24 +56,26 @@ export function roomWaves(rom: Rom, world: number, count: number) {
 }
 
 /** Alive caps for one room with one player in, at the default difficulty. */
+const DIFFICULTY_BONUS = -1;
+
 export function roomCaps(rom: Rom, world: number, room: number) {
   const byte = (table: number) => rom.prog[((table - 0xffe00000) >>> 3) + room];
   const caps: Record<string, number> = {};
   if (world === 0) {
-    caps.grunt = byte(0xffe12d80);
+    caps.grunt = byte(0xffe12d80) + DIFFICULTY_BONUS;
     caps.tank = byte(0xffe12de0);
     caps.type4 = byte(0xffe12e40);
   } else if (world === 1) {
-    caps.type10 = byte(0xffe12f58) - 2;
+    caps.type10 = byte(0xffe12f58) - 2 + DIFFICULTY_BONUS;
     caps.type2 = byte(0xffe12e98);
     caps.type12 = byte(0xffe130d8) - 2;
     caps.type4 = 5;
     caps.tank = 1;
   } else {
-    caps.type10 = byte(0xffe13018) - 5;
+    caps.type10 = byte(0xffe13018) - 5 + DIFFICULTY_BONUS;
     caps.type2 = byte(0xffe12e98) - 2;
     caps.type12 = byte(0xffe13178) - 2;
-    caps.grunt = byte(0xffe132c8) - 5;
+    caps.grunt = byte(0xffe132c8) - 5 + DIFFICULTY_BONUS;
     caps.type4 = 5;
     caps.tank = room === 1 ? 3 : room === 11 ? 4 : 1;
   }
