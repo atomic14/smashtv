@@ -8,7 +8,7 @@ import {
   POWERUPS, PRIZES, type PickupKind, type Entity,
 } from './entities';
 import { MutoidMan } from './boss';
-import { WORLDS, TITLE_ROOM, STUDIO_ROOM, type EnemyKind, type RoomDef } from './levels';
+import { WORLDS, TITLE_ROOM, STUDIO_ROOM, WorldMap, mapCell, type EnemyKind, type RoomDef } from './levels';
 
 type State = 'title' | 'intro' | 'map' | 'play' | 'transition' | 'continue' | 'gameover' | 'victory';
 
@@ -30,7 +30,10 @@ export class Game {
   effects: Effect[] = [];
   pickups: Pickup[] = [];
   world = 0;
-  roomIdx = 0;
+  /** The current world's room grid and the rooms already cleared. */
+  map!: WorldMap;
+  visited = new Set<RoomDef>();
+  roomsCleared = 0;
   room!: RoomDef;
   queue: SpawnGroup[] = [];
   pending: { at: number; enemy: Enemy }[] = [];
@@ -62,25 +65,34 @@ export class Game {
     this.timers = [];
     this.player = new Player();
     this.world = 0;
-    this.roomIdx = 0;
+    this.roomsCleared = 0;
     audio.play(SND.start);
     this.setState('intro');
     void this.preloadWorld(0);
   }
 
   async preloadWorld(w: number) {
-    for (const r of WORLDS[w]?.rooms ?? []) await ensureRoom(r.bg);
+    for (const r of assets.worlds[w]?.rooms ?? []) await ensureRoom(r.bg);
   }
 
   startWorld() {
-    this.roomIdx = 0;
+    this.map = new WorldMap(WORLDS[this.world], this.world, assets.worlds[this.world]);
+    this.visited.clear();
     this.setState('map');
     audio.playMusic(null);
   }
 
+  /** Walk in from the TV studio, which sits to the left of the first arena. */
+  enterWorld() {
+    const s = this.map.data.start;
+    this.room = this.map.through(s.col, s.row, 'right')!;
+    this.startRoom('left');
+  }
+
   startRoom(entry: DoorId | null) {
     const w = WORLDS[this.world];
-    this.room = w.rooms[this.roomIdx];
+    const revisit = this.visited.has(this.room);
+    this.visited.add(this.room);
     this.enemies = [];
     this.shots = [];
     this.effects = [];
@@ -93,7 +105,7 @@ export class Game {
     this.entry = entry;
     this.spawnT = 2;
     this.pickupT = rand(4, 7);
-    this.queue = buildQueue(this.room);
+    this.queue = revisit ? [] : buildQueue(this.room);
     const p = this.player;
     p.exiting = null;
     p.dying = 0;
@@ -109,10 +121,16 @@ export class Game {
       p.auto = null;
       p.invuln = 2.5;
     }
-    if (this.room.boss) {
+    if (revisit) {
+      this.cleared = true;
+    } else if (this.room.boss) {
       this.say('BOSS ROOM', 2.5);
       audio.play(SND.noWay);
-    } else if (this.roomIdx === 0) {
+    } else if (this.room.kind === 'bonus') {
+      this.say('BIG MONEY', 2);
+      audio.play(SND.bigMoney);
+      this.pickupT = 1;
+    } else if (this.room.depth === 1) {
       audio.play(SND.letsGo);
     }
     audio.playMusic(w.music);
@@ -155,7 +173,7 @@ export class Game {
         if (this.stateT > 3.6 || (input.start && this.stateT > 0.3)) this.startWorld();
         break;
       case 'map':
-        if (this.stateT > 3 || (input.start && this.stateT > 0.3)) this.startRoom(null);
+        if (this.stateT > 3 || (input.start && this.stateT > 0.3)) this.enterWorld();
         break;
       case 'play':
         this.updatePlay();
@@ -220,8 +238,9 @@ export class Game {
 
     // random prizes and power-ups dropped into the arena
     if (!this.cleared && (this.pickupT -= DT) <= 0) {
-      this.pickupT = rand(5, 9);
-      const kind: PickupKind = Math.random() < 0.45 ? pick(POWERUPS) : pick(PRIZES);
+      const bonus = this.room.kind === 'bonus';
+      this.pickupT = bonus ? rand(0.6, 1.2) : rand(5, 9);
+      const kind: PickupKind = bonus ? pick(['money', 'cash', 'cash', 'prize'] as const) : Math.random() < 0.45 ? pick(POWERUPS) : pick(PRIZES);
       let x = 0, y = 0;
       do {
         x = rand(FLOOR.x0 + 20, FLOOR.x1 - 20);
@@ -281,6 +300,7 @@ export class Game {
 
   private roomCleared() {
     this.cleared = true;
+    this.roomsCleared++;
     for (const e of this.enemies) if (!e.dead && !e.counts) e.damage(this, 99, { x: 0, y: 0 });
     this.shots = this.shots.filter((s) => s.friendly);
     if (this.room.boss) return; // bossDefeated handles it
@@ -307,12 +327,22 @@ export class Game {
     });
   }
 
+  /** Doors that lead somewhere: connected rooms, preferring ones not yet cleared. */
+  openDoors(): DoorId[] {
+    if (!this.cleared || this.room.boss) return [];
+    const all = DOOR_IDS.filter((d) => d !== this.entry && this.map.through(this.room.col, this.room.row, d));
+    const fresh = all.filter((d) => !this.visited.has(this.map.through(this.room.col, this.room.row, d)!));
+    if (fresh.length) return fresh;
+    // dead end: open only the door on the shortest path back to an uncleared room
+    const step = this.map.routeToUnvisited(this.room, this.visited);
+    return step ? [step] : [];
+  }
+
   /** Which open exit (if any) the player is pushing into. */
   exitFor(p: Player): DoorId | null {
-    if (!this.cleared || this.room.boss || p.dying > 0) return null;
+    if (!this.cleared || p.dying > 0) return null;
     const m = input.move;
-    for (const id of DOOR_IDS) {
-      if (id === this.entry) continue;
+    for (const id of this.openDoors()) {
       const d = DOORS[id];
       if (id === 'top' && p.y <= FLOOR.y0 + 1 && Math.abs(p.x - d.x) < 22 && m.y < -0.5) return id;
       if (id === 'bottom' && p.y >= FLOOR.y1 - 1 && Math.abs(p.x - d.x) < 26 && m.y > 0.5) return id;
@@ -324,8 +354,8 @@ export class Game {
 
   private beginTransition(door: DoorId) {
     const from = this.room.bg;
-    this.roomIdx = Math.min(this.roomIdx + 1, WORLDS[this.world].rooms.length - 1);
-    const to = WORLDS[this.world].rooms[this.roomIdx].bg;
+    this.room = this.map.through(this.room.col, this.room.row, door)!;
+    const to = this.room.bg;
     this.transition = { from, to, door, t: 0 };
     this.enemies = [];
     this.shots = [];
@@ -336,7 +366,7 @@ export class Game {
 
   /** Enemy speed multiplier: ramps up through each world and from world to world. */
   get difficulty() {
-    return 1 + this.world * 0.1 + this.roomIdx * 0.04;
+    return 1 + this.world * 0.1 + Math.max(0, (this.room?.depth ?? 1) - 1) * 0.04;
   }
 
   canFire() {
@@ -483,8 +513,9 @@ export class Game {
     ctx.restore();
     this.overlay?.();
     if (this.paused && !this.overlay) {
-      fillRect(0, 0, W, H, 'rgba(0,0,0,0.5)');
-      drawText('PAUSED', W / 2, 118, 'big', 'center');
+      fillRect(0, 0, W, H, 'rgba(0,0,0,0.6)');
+      drawText('PAUSED', W / 2, 40, 'big', 'center');
+      if (this.map && this.room && this.state !== 'title') this.drawWorldMap(Math.round(W / 2 - 72), 70);
     }
   }
 
@@ -499,7 +530,7 @@ export class Game {
     const list: Entity[] = [...this.pickups, ...this.enemies, ...this.shots, ...this.effects, this.player];
     list.sort((a, b) => a.y - b.y);
     for (const e of list) e.draw(this);
-    if (this.cleared && !this.room.boss) this.drawExits();
+    if (this.cleared) this.drawExits();
     this.drawHud();
     if (this.message) {
       const m = this.message;
@@ -524,8 +555,7 @@ export class Game {
 
   private drawExits() {
     if (Math.floor(this.clearT * 4) % 2) return;
-    for (const id of DOOR_IDS) {
-      if (id === this.entry) continue;
+    for (const id of this.openDoors()) {
       const d = DOORS[id];
       if (id === 'top') drawAt('arrow.u', 0, d.x, FLOOR.y0 - 2);
       if (id === 'bottom') {
@@ -551,8 +581,7 @@ export class Game {
       fillRect(104, 66, Math.max(0, (p.weaponT / 12) * 28), 3, '#ffd84a');
     }
     // right panel: room / boss status
-    const w = WORLDS[this.world];
-    drawText(`ROOM ${this.roomIdx + 1}/${w.rooms.length}`, 270, 52, 'small');
+    drawText(`ROOMS ${this.roomsCleared}`, 270, 52, 'small');
     drawText(`HI ${this.hiScore}`, 270, 64, 'small');
     if (this.boss) {
       fillRect(130, 244, 140, 6, '#300');
@@ -583,13 +612,39 @@ export class Game {
   private drawMap() {
     fillRect(0, 0, W, H, '#000');
     const w = WORLDS[this.world];
-    const map = anim(w.map)[0];
-    const f = assets.frames[map[0]];
-    drawFrameAt(map, Math.round(W / 2 - f[3] / 2), 60);
     const t = anim(w.mapText)[0];
     const ft = assets.frames[t[0]];
     drawFrameAt(t, Math.round(W / 2 - ft[3] / 2), 30);
-    drawText(`${w.rooms.length} ROOMS TO THE BOSS`, W / 2, 60 + f[4] + 14, 'small', 'center');
+    const f = this.drawWorldMap(Math.round(W / 2 - 72), 60);
+    const boss = this.map.room(w.boss.col, w.boss.row);
+    if (boss) drawText(`${boss.depth - 1} ROOMS TO THE BOSS`, W / 2, 60 + f.h + 14, 'small', 'center');
+  }
+
+  /** The original map art with cleared rooms crossed out and the current room flashing. */
+  private drawWorldMap(x: number, y: number) {
+    const map = anim(WORLDS[this.world].map)[0];
+    const f = assets.frames[map[0]];
+    drawFrameAt(map, x, y);
+    for (const r of this.visited) {
+      if (r === this.room) continue;
+      const c = mapCell(r.col, r.row);
+      ctx.strokeStyle = '#e21';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x + c.x - 5, y + c.y - 4);
+      ctx.lineTo(x + c.x + 5, y + c.y + 4);
+      ctx.moveTo(x + c.x + 5, y + c.y - 4);
+      ctx.lineTo(x + c.x - 5, y + c.y + 4);
+      ctx.stroke();
+    }
+    const here = this.state === 'map' ? { col: this.map.data.start.col + 1, row: this.map.data.start.row } : this.room;
+    if (here && Math.floor(this.time * 4) % 2 === 0) {
+      const c = mapCell(here.col, here.row);
+      ctx.strokeStyle = '#ffe14a';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(Math.round(x + c.x - 9) + 0.5, Math.round(y + c.y - 7) + 0.5, 18, 14);
+    }
+    return { w: f[3], h: f[4] };
   }
 
   private drawTransition() {

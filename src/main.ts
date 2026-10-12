@@ -5,7 +5,7 @@ import { input } from './input';
 import { audio } from './audio';
 import { Game } from './game/game';
 import { DT } from './game/world';
-import { TITLE_ROOM, STUDIO_ROOM, WORLDS } from './game/levels';
+import { TITLE_ROOM, STUDIO_ROOM } from './game/levels';
 
 const canvas = document.getElementById('screen') as HTMLCanvasElement;
 initGfx(canvas);
@@ -33,7 +33,7 @@ async function boot() {
   ctx.fillRect(0, 0, W, H);
   input.init();
   void audio.init();
-  await loadAssets([TITLE_ROOM, STUDIO_ROOM, ...WORLDS[0].rooms.map((r) => r.bg)]);
+  await loadAssets([TITLE_ROOM, STUDIO_ROOM]);
   const game = new Game();
   (window as unknown as { game: Game }).game = game;
 

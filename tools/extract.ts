@@ -6,7 +6,7 @@
 //   public/assets/rooms/<addr>.png + rooms.json   every background (arena/title) layout
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { PNG } from 'pngjs';
-import { loadRom, scanHeaders, scanPlainHeaders, decodeIndices, readPalette, type ImageHeader } from './rom';
+import { loadRom, scanHeaders, scanPlainHeaders, decodeIndices, readPalette, u16, u32, type ImageHeader } from './rom';
 import { scanRooms, renderRoom } from './rooms';
 import { CATALOG, FONT_BIG, FONT_SMALL } from './catalog';
 
@@ -96,6 +96,35 @@ for (const d of rooms) {
 }
 writeFileSync(`${OUT}/rooms.json`, JSON.stringify(roomIndex));
 console.log(`rooms: ${rooms.length}`);
+
+// ---- world maps -----------------------------------------------------------------
+// Table at FFE72650 (indexed by the world number in RAM 010EB610) points at one list per
+// world of (descriptor, world x, world y) entries, terminated by -1. Arenas sit on a grid
+// ~472x332 apart; corridor pieces between them say which neighbours are connected:
+//   FFF6C720 at (col + 0.83, row)  joins (col, row) and (col + 1, row)
+//   FFF6C690 at (col, row + 0.76)  joins (col, row) and (col, row + 1)
+//   FFF6C7B0                       joins the TV studio (col -1) to the first arena
+const GRID_X = 472.25, GRID_Y = 332.4, X0 = 477, Y0 = 5;
+const worlds = [];
+for (let w = 0; w < 3; w++) {
+  const list = u32(rom, 0xffe72650 + w * 32);
+  const cells: { bg: string; col: number; row: number }[] = [];
+  const links: [number, number, number, number][] = [];
+  let start = { col: -1, row: 0 };
+  for (let a = list; u32(rom, a) !== 0xffffffff; a += 64) {
+    const d = u32(rom, a), x = u16(rom, a + 32), y = u16(rom, a + 48);
+    const fc = (x - X0) / GRID_X, fr = (y - Y0) / GRID_Y;
+    const col = Math.round(fc), row = Math.round(fr);
+    if (d === 0xfff6c840) start = { col: -1, row };
+    else if (d === 0xfff6c720) links.push([Math.floor(fc), row, Math.floor(fc) + 1, row]);
+    else if (d === 0xfff6c690) links.push([col, Math.floor(fr), col, Math.floor(fr) + 1]);
+    else if (d === 0xfff6c7b0) links.push([-1, row, 0, row]);
+    else if (Math.abs(fr - row) < 0.05 && roomIndex[hex(d)]) cells.push({ bg: hex(d), col, row });
+  }
+  worlds.push({ start, rooms: cells, links });
+}
+writeFileSync(`${OUT}/worlds.json`, JSON.stringify(worlds));
+console.log(`worlds: ${worlds.map((w) => w.rooms.length).join('/')} rooms`);
 
 function nextPow2(n: number) {
   let p = 1;

@@ -1,4 +1,5 @@
 // Loads the assets produced by tools/extract.ts (sprites, named animations, fonts, rooms).
+import type { WorldData } from './game/levels';
 
 /** [page, x, y, w, h, xoff, yoff] */
 export type FrameData = [number, number, number, number, number, number, number];
@@ -12,6 +13,7 @@ export interface Assets {
   fonts: { big: Record<string, string>; small: Record<string, string> };
   rooms: Record<string, { w: number; h: number }>;
   roomImages: Map<string, HTMLImageElement>;
+  worlds: WorldData[];
 }
 
 const BASE = `${import.meta.env.BASE_URL}assets/`;
@@ -34,17 +36,18 @@ async function json<T>(name: string): Promise<T> {
 export let assets: Assets;
 
 export async function loadAssets(roomsToPreload: string[]): Promise<Assets> {
-  const [sprites, anims, rooms] = await Promise.all([
+  const [sprites, anims, rooms, worlds] = await Promise.all([
     json<{ pages: number; frames: Record<string, FrameData> }>('sprites.json'),
     json<{ anims: Assets['anims']; fonts: Assets['fonts'] }>('anims.json'),
     json<Assets['rooms']>('rooms.json'),
+    json<WorldData[]>('worlds.json'),
   ]);
   const pages = await Promise.all(Array.from({ length: sprites.pages }, (_, i) => loadImage(`${BASE}sprites-${i}.png`)));
   const roomImages = new Map<string, HTMLImageElement>();
   await Promise.all(
     roomsToPreload.map(async (id) => roomImages.set(id, await loadImage(`${BASE}rooms/${id}.png`))),
   );
-  assets = { pages, frames: sprites.frames, anims: anims.anims, fonts: anims.fonts, rooms, roomImages };
+  assets = { pages, frames: sprites.frames, anims: anims.anims, fonts: anims.fonts, rooms, roomImages, worlds };
   return assets;
 }
 
