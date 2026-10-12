@@ -23,6 +23,8 @@ const PITS = [
 const SEG = 3; // trail spacing between body segments (px)
 const MAX_SEGS = 70;
 const FLAME = { rear: 0.3, breathe: 0.62, ring: 0.27 };
+/** The game mirrors the cobra's right half 5px further left than the generic flip rule. */
+const MIRROR = -5;
 
 class Cobra extends Enemy {
   hp = 55;
@@ -134,7 +136,7 @@ class Cobra extends Enemy {
     const pair = (name: string, i = 0) => {
       const f = anim(name)[i % anim(name).length];
       drawFrame([f[0], 0], X, Y);
-      drawFrame([f[0], 1], X, Y);
+      drawFrame([f[0], 1], X + MIRROR, Y);
     };
     if (this.attack > 0) {
       pair(`${k}.rear`, this.attack < FLAME.rear / 2 ? 0 : 1);

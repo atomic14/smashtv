@@ -182,7 +182,7 @@ export class Player implements Entity {
 // Shots
 // ---------------------------------------------------------------------------------
 
-export type ShotKind = 'shot' | 'rocket' | 'eshot' | 'shell' | 'pellet';
+export type ShotKind = 'shot' | 'rocket' | 'eshot' | 'shell' | 'pellet' | 'pellet2';
 
 export class Shot implements Entity {
   r = 2;
@@ -199,7 +199,7 @@ export class Shot implements Entity {
     public kind: ShotKind,
   ) {
     if (kind === 'rocket') this.r = 4;
-    if (kind === 'eshot' || kind === 'shell' || kind === 'pellet') this.r = 3;
+    if (kind === 'eshot' || kind === 'shell' || kind === 'pellet' || kind === 'pellet2') this.r = 3;
   }
 
   update(g: Game) {
@@ -246,8 +246,9 @@ export class Shot implements Entity {
       drawAt('eshot', Math.floor(this.t * 12), this.x, this.y + 3, 'eshot');
       return;
     }
-    if (this.kind === 'pellet') {
-      drawAt('boss.pellet', 0, this.x, this.y + 3, 'boss.pellet');
+    if (this.kind === 'pellet' || this.kind === 'pellet2') {
+      const name = this.kind === 'pellet' ? 'boss.pellet' : 'scar.pellet';
+      drawAt(name, 0, this.x, this.y + 2, name);
       return;
     }
     if (this.kind === 'shell') {

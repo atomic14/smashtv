@@ -114,6 +114,21 @@ export const CATALOG: Record<string, Ref[]> = {
   // ---- Cobra Death (world 3): two cobras rising from pits; mirrored head halves ----
   ...cobra('cobra', ''),
   ...cobra('cobra.blue', '~1140'),
+  // ---- Scarface (world 2): face in a ring of armour plates; every part shares one anchor.
+  // Eight plates per side (top to bottom), five damage stages each.
+  ...Object.fromEntries(Array.from({ length: 8 }, (_, k) => [`scar.plate${k}`, seq(1035 + k * 5, 1039 + k * 5)])),
+  'scar.brain': seq(993, 997),
+  'scar.chin': seq(1079, 1082),
+  'scar.tube.a': seq(1083, 1086),
+  'scar.tube.b': seq(1087, 1090),
+  'scar.tube.c': seq(1091, 1094),
+  'scar.eyes': seq(999, 1008),
+  'scar.jaw': seq(1009, 1012),
+  'scar.teeth.upper': [1022],
+  'scar.teeth.lower': [1025],
+  'scar.skull.upper': [1103],
+  'scar.skull.jaw': [1095],
+  'scar.pellet': [647],
   'cobra.flame': seq(518, 526),
   'cobra.fire': seq(527, 529),
   // ---- shots and effects ----
