@@ -492,27 +492,36 @@ export class Orb extends Enemy {
   }
 }
 
-/** Tank: rolls around slowly and lobs shells at the player. */
+/**
+ * Tank: sits still most of the time (70% in the original), then drives for ~1.2s at
+ * 1.06 px/frame, lobbing shells at the player.
+ */
 export class Tank extends Enemy {
   hp = 14;
   score = 1000;
-  speed = 26;
+  speed = 1.06 * ARCADE_HZ;
   r = 15;
   bodyH = 14;
   cd = rand(1, 2.5);
   heading = 0;
   flash = 0;
   goal = { x: 200, y: 160 };
+  /** Seconds left of the current drive (> 0) or wait (< 0). */
+  drive = 1.2;
   think(g: Game) {
     this.flash = Math.max(0, this.flash - DT);
-    if (Math.hypot(this.goal.x - this.x, this.goal.y - this.y) < 8 || Math.random() < 0.003) {
-      this.goal = { x: rand(FLOOR.x0 + 20, FLOOR.x1 - 20), y: rand(FLOOR.y0 + 20, FLOOR.y1 - 10) };
+    this.drive -= DT;
+    if (this.drive < -rand(2, 3.5)) {
+      this.drive = rand(0.8, 1.6);
+      this.goal = { x: clamp(g.player.x + rand(-80, 80), FLOOR.x0 + 20, FLOOR.x1 - 20), y: clamp(g.player.y + rand(-60, 60), FLOOR.y0 + 20, FLOOR.y1 - 10) };
     }
     const dx = this.goal.x - this.x, dy = this.goal.y - this.y;
     const d = Math.hypot(dx, dy) || 1;
-    this.x += (dx / d) * this.speed * DT;
-    this.y += (dy / d) * this.speed * DT;
-    this.heading = Math.atan2(dx, -dy);
+    if (this.drive > 0 && d > 4) {
+      this.x += (dx / d) * this.speed * DT;
+      this.y += (dy / d) * this.speed * DT;
+      this.heading = Math.atan2(dx, -dy);
+    }
     this.cd -= DT;
     if (this.cd <= 0 && g.player.alive) {
       this.cd = rand(1.4, 2.6);

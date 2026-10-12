@@ -250,8 +250,8 @@ export class FloorMine extends Enemy {
 }
 
 /**
- * Orb swarm (wave type 11): a leader bouncing diagonally at ~1.1 px/frame with twenty
- * small orbs homing on it at up to ~2.4 px/frame.
+ * Orb swarm (wave type 11): a leader steering after the player at ~1.9 px/frame with
+ * twenty small orbs homing on it at up to ~3.3 px/frame (recorded medians).
  */
 export class SwarmLeader extends Enemy {
   hp = 6;
@@ -259,13 +259,23 @@ export class SwarmLeader extends Enemy {
   r = 9;
   bodyH = 14;
   entering = false;
-  vx = pick([-1, 1]) * 1.1 * PF * 0.7;
-  vy = pick([-1, 1]) * 1.1 * PF * 0.7;
+  vx = pick([-1, 1]) * PF;
+  vy = pick([-1, 1]) * PF;
   flash = 0;
-  bits: SwarmBit[] = [];
 
-  think() {
+  think(g: Game) {
     this.flash = Math.max(0, this.flash - DT);
+    // steers smoothly towards the player, overshooting into loops
+    const p = g.player;
+    const dx = p.x - this.x, dy = p.y - 10 - this.y;
+    const d = Math.hypot(dx, dy) || 1;
+    this.vx += (dx / d) * 2.2 * PF * DT;
+    this.vy += (dy / d) * 2.2 * PF * DT;
+    const sp = Math.hypot(this.vx, this.vy), max = 1.9 * PF;
+    if (sp > max) {
+      this.vx *= max / sp;
+      this.vy *= max / sp;
+    }
     this.x += this.vx * DT;
     this.y += this.vy * DT;
     if (this.x < FLOOR.x0 || this.x > FLOOR.x1) this.vx *= -1;
@@ -319,7 +329,7 @@ export class SwarmBit extends Enemy {
     const d = Math.hypot(dx, dy) || 1;
     this.vx += (dx / d) * 360 * DT;
     this.vy += (dy / d) * 360 * DT;
-    const s = Math.hypot(this.vx, this.vy), max = 2.4 * PF;
+    const s = Math.hypot(this.vx, this.vy), max = 3.3 * PF;
     if (s > max) {
       this.vx *= max / s;
       this.vy *= max / s;
