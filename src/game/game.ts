@@ -597,8 +597,12 @@ export class Game {
     this.drawControls();
   }
 
-  /** How to play, under the start prompt. */
+  /**
+   * How to play, under the start prompt. It alternates with the title art's own
+   * "COPYRIGHT 1990 WILLIAMS ELECTRONICS GAMES, INC." line, which it would otherwise cover.
+   */
   private drawControls() {
+    if (Math.floor(this.stateT / 5) % 2 === 0) return;
     const lines = input.touch
       ? ['LEFT STICK  MOVE', 'RIGHT STICK  FIRE', 'TAP  START']
       : ['WASD  MOVE      ARROWS  FIRE', 'P  PAUSE    M  MUTE', 'GAMEPAD  STICKS TO MOVE AND FIRE'];
