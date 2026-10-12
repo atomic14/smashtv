@@ -93,19 +93,23 @@ one player is supported.
 
 ## Building it yourself
 
-You need your own copy of the *Smash T.V.* arcade ROM set (`smashtv.zip`, as used by MAME).
-The extracted data is derived from the copyrighted ROMs, so it is not in this repository.
+The data extracted from the ROMs is checked in under `public/assets/`, so playing and
+building only need Node:
 
 ```sh
 npm install
-npm run extract -- /path/to/smashtv.zip    # graphics, arenas, maps and waves
-tools/record-audio.sh /path/to/rom-dir      # sound: needs mame, ffmpeg and uv (optional)
-npm run dev                                 # http://localhost:5173 (also on your LAN)
-npm run build                               # static site in dist/
+npm run dev      # http://localhost:5173 (also on your LAN)
+npm run build    # static site in dist/
 ```
 
-The extracted data lands in `public/assets/` (git-ignored). Python tooling runs through
-[uv](https://docs.astral.sh/uv/).
+To regenerate the data from the arcade ROM set (`smashtv.zip`, as used by MAME):
+
+```sh
+npm run extract -- /path/to/smashtv.zip    # graphics, arenas, maps and waves
+tools/record-audio.sh /path/to/rom-dir      # sound: needs mame, ffmpeg and uv
+```
+
+Python tooling runs through [uv](https://docs.astral.sh/uv/).
 
 ## Technical notes
 

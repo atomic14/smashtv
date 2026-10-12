@@ -1,0 +1,504 @@
+{
+ "10": {
+  "file": "s10.mp3",
+  "dur": 147.43,
+  "music": true,
+  "loopStart": 130.2402,
+  "loopEnd": 146.9329
+ },
+ "30": {
+  "file": "s30.mp3",
+  "dur": 0.87
+ },
+ "31": {
+  "file": "s31.mp3",
+  "dur": 0.49
+ },
+ "32": {
+  "file": "s32.mp3",
+  "dur": 1.71
+ },
+ "33": {
+  "file": "s33.mp3",
+  "dur": 0.29
+ },
+ "34": {
+  "file": "s34.mp3",
+  "dur": 0.45
+ },
+ "35": {
+  "file": "s35.mp3",
+  "dur": 0.6
+ },
+ "36": {
+  "file": "s36.mp3",
+  "dur": 0.57
+ },
+ "37": {
+  "file": "s37.mp3",
+  "dur": 0.95
+ },
+ "38": {
+  "file": "s38.mp3",
+  "dur": 2.26
+ },
+ "39": {
+  "file": "s39.mp3",
+  "dur": 1.33
+ },
+ "50": {
+  "file": "s50.mp3",
+  "dur": 0.88
+ },
+ "51": {
+  "file": "s51.mp3",
+  "dur": 1.58
+ },
+ "52": {
+  "file": "s52.mp3",
+  "dur": 1.59
+ },
+ "53": {
+  "file": "s53.mp3",
+  "dur": 0.65
+ },
+ "54": {
+  "file": "s54.mp3",
+  "dur": 1.7
+ },
+ "55": {
+  "file": "s55.mp3",
+  "dur": 1.61
+ },
+ "56": {
+  "file": "s56.mp3",
+  "dur": 1.85
+ },
+ "57": {
+  "file": "s57.mp3",
+  "dur": 1.25
+ },
+ "58": {
+  "file": "s58.mp3",
+  "dur": 0.75
+ },
+ "59": {
+  "file": "s59.mp3",
+  "dur": 1.33
+ },
+ "80": {
+  "file": "s80.mp3",
+  "dur": 0.44
+ },
+ "81": {
+  "file": "s81.mp3",
+  "dur": 0.94
+ },
+ "82": {
+  "file": "s82.mp3",
+  "dur": 0.51
+ },
+ "83": {
+  "file": "s83.mp3",
+  "dur": 0.52
+ },
+ "84": {
+  "file": "s84.mp3",
+  "dur": 0.52
+ },
+ "85": {
+  "file": "s85.mp3",
+  "dur": 0.93
+ },
+ "86": {
+  "file": "s86.mp3",
+  "dur": 1.99
+ },
+ "87": {
+  "file": "s87.mp3",
+  "dur": 0.89
+ },
+ "89": {
+  "file": "s89.mp3",
+  "dur": 1.03
+ },
+ "90": {
+  "file": "s90.mp3",
+  "dur": 9.95
+ },
+ "91": {
+  "file": "s91.mp3",
+  "dur": 1.38
+ },
+ "92": {
+  "file": "s92.mp3",
+  "dur": 2.04
+ },
+ "93": {
+  "file": "s93.mp3",
+  "dur": 2.04
+ },
+ "94": {
+  "file": "s94.mp3",
+  "dur": 1.2
+ },
+ "95": {
+  "file": "s95.mp3",
+  "dur": 0.34
+ },
+ "96": {
+  "file": "s96.mp3",
+  "dur": 2.01
+ },
+ "97": {
+  "file": "s97.mp3",
+  "dur": 0.57
+ },
+ "98": {
+  "file": "s98.mp3",
+  "dur": 0.69
+ },
+ "99": {
+  "file": "s99.mp3",
+  "dur": 0.69
+ },
+ "2f": {
+  "file": "s2f.mp3",
+  "dur": 0.04
+ },
+ "3a": {
+  "file": "s3a.mp3",
+  "dur": 0.63
+ },
+ "3b": {
+  "file": "s3b.mp3",
+  "dur": 1.21
+ },
+ "3c": {
+  "file": "s3c.mp3",
+  "dur": 1.19
+ },
+ "3d": {
+  "file": "s3d.mp3",
+  "dur": 0.38
+ },
+ "3e": {
+  "file": "s3e.mp3",
+  "dur": 2.57
+ },
+ "3f": {
+  "file": "s3f.mp3",
+  "dur": 1.55
+ },
+ "4f": {
+  "file": "s4f.mp3",
+  "dur": 0.04
+ },
+ "5a": {
+  "file": "s5a.mp3",
+  "dur": 1.12
+ },
+ "7f": {
+  "file": "s7f.mp3",
+  "dur": 0.04
+ },
+ "8a": {
+  "file": "s8a.mp3",
+  "dur": 0.92
+ },
+ "8b": {
+  "file": "s8b.mp3",
+  "dur": 9.95
+ },
+ "8c": {
+  "file": "s8c.mp3",
+  "dur": 1.12
+ },
+ "8d": {
+  "file": "s8d.mp3",
+  "dur": 9.95
+ },
+ "8e": {
+  "file": "s8e.mp3",
+  "dur": 9.95
+ },
+ "8f": {
+  "file": "s8f.mp3",
+  "dur": 9.95
+ },
+ "9a": {
+  "file": "s9a.mp3",
+  "dur": 0.34
+ },
+ "9b": {
+  "file": "s9b.mp3",
+  "dur": 0.95
+ },
+ "9c": {
+  "file": "s9c.mp3",
+  "dur": 0.76
+ },
+ "9d": {
+  "file": "s9d.mp3",
+  "dur": 0.52
+ },
+ "9e": {
+  "file": "s9e.mp3",
+  "dur": 0.04
+ },
+ "9f": {
+  "file": "s9f.mp3",
+  "dur": 0.62
+ },
+ "a0": {
+  "file": "sa0.mp3",
+  "dur": 1.08
+ },
+ "a2": {
+  "file": "sa2.mp3",
+  "dur": 0.65
+ },
+ "a3": {
+  "file": "sa3.mp3",
+  "dur": 4.99
+ },
+ "a4": {
+  "file": "sa4.mp3",
+  "dur": 0.33
+ },
+ "a5": {
+  "file": "sa5.mp3",
+  "dur": 0.33
+ },
+ "a6": {
+  "file": "sa6.mp3",
+  "dur": 1.2
+ },
+ "a7": {
+  "file": "sa7.mp3",
+  "dur": 0.33
+ },
+ "a8": {
+  "file": "sa8.mp3",
+  "dur": 2.73
+ },
+ "a9": {
+  "file": "sa9.mp3",
+  "dur": 0.81
+ },
+ "aa": {
+  "file": "saa.mp3",
+  "dur": 2.39
+ },
+ "ab": {
+  "file": "sab.mp3",
+  "dur": 0.04
+ },
+ "ac": {
+  "file": "sac.mp3",
+  "dur": 0.3
+ },
+ "ad": {
+  "file": "sad.mp3",
+  "dur": 0.91
+ },
+ "ae": {
+  "file": "sae.mp3",
+  "dur": 0.52
+ },
+ "af": {
+  "file": "saf.mp3",
+  "dur": 0.21
+ },
+ "b0": {
+  "file": "sb0.mp3",
+  "dur": 0.21
+ },
+ "b1": {
+  "file": "sb1.mp3",
+  "dur": 0.43
+ },
+ "b2": {
+  "file": "sb2.mp3",
+  "dur": 9.95
+ },
+ "b3": {
+  "file": "sb3.mp3",
+  "dur": 0.53
+ },
+ "b4": {
+  "file": "sb4.mp3",
+  "dur": 1.2
+ },
+ "b5": {
+  "file": "sb5.mp3",
+  "dur": 0.69
+ },
+ "b6": {
+  "file": "sb6.mp3",
+  "dur": 0.69
+ },
+ "bf": {
+  "file": "sbf.mp3",
+  "dur": 0.04
+ },
+ "c0": {
+  "file": "sc0.mp3",
+  "dur": 1.61
+ },
+ "c1": {
+  "file": "sc1.mp3",
+  "dur": 0.03
+ },
+ "c2": {
+  "file": "sc2.mp3",
+  "dur": 1.27
+ },
+ "c3": {
+  "file": "sc3.mp3",
+  "dur": 0.38
+ },
+ "c4": {
+  "file": "sc4.mp3",
+  "dur": 0.59
+ },
+ "c5": {
+  "file": "sc5.mp3",
+  "dur": 0.96
+ },
+ "c6": {
+  "file": "sc6.mp3",
+  "dur": 1.51
+ },
+ "c8": {
+  "file": "sc8.mp3",
+  "dur": 0.47
+ },
+ "c9": {
+  "file": "sc9.mp3",
+  "dur": 0.55
+ },
+ "ca": {
+  "file": "sca.mp3",
+  "dur": 2.93
+ },
+ "cb": {
+  "file": "scb.mp3",
+  "dur": 1.42
+ },
+ "cc": {
+  "file": "scc.mp3",
+  "dur": 1.87
+ },
+ "ce": {
+  "file": "sce.mp3",
+  "dur": 1.18
+ },
+ "cf": {
+  "file": "scf.mp3",
+  "dur": 2.38
+ },
+ "01": {
+  "file": "s01.mp3",
+  "dur": 147.45,
+  "music": true,
+  "loopStart": 77.4351,
+  "loopEnd": 146.95
+ },
+ "02": {
+  "file": "s02.mp3",
+  "dur": 147.45,
+  "music": true,
+  "loopStart": 7.92,
+  "loopEnd": 146.95
+ },
+ "03": {
+  "file": "s03.mp3",
+  "dur": 147.45,
+  "music": true,
+  "loopStart": 77.4353,
+  "loopEnd": 146.95
+ },
+ "04": {
+  "file": "s04.mp3",
+  "dur": 147.45,
+  "music": true,
+  "loopStart": 38.5063,
+  "loopEnd": 146.95
+ },
+ "05": {
+  "file": "s05.mp3",
+  "dur": 147.45,
+  "music": true,
+  "loopStart": 74.6544,
+  "loopEnd": 146.95
+ },
+ "06": {
+  "file": "s06.mp3",
+  "dur": 147.45,
+  "music": true,
+  "loopStart": 74.654,
+  "loopEnd": 146.95
+ },
+ "07": {
+  "file": "s07.mp3",
+  "dur": 147.45,
+  "music": true,
+  "loopStart": 74.6545,
+  "loopEnd": 146.95
+ },
+ "08": {
+  "file": "s08.mp3",
+  "dur": 147.45,
+  "music": true,
+  "loopStart": 85.7768,
+  "loopEnd": 146.95
+ },
+ "09": {
+  "file": "s09.mp3",
+  "dur": 147.45,
+  "music": true,
+  "loopStart": 134.6111,
+  "loopEnd": 146.95
+ },
+ "0a": {
+  "file": "s0a.mp3",
+  "dur": 147.45,
+  "music": true,
+  "loopStart": 80.2156,
+  "loopEnd": 146.95
+ },
+ "0b": {
+  "file": "s0b.mp3",
+  "dur": 0.05,
+  "music": true
+ },
+ "0c": {
+  "file": "s0c.mp3",
+  "dur": 147.45,
+  "music": true,
+  "loopStart": 77.4351,
+  "loopEnd": 146.95
+ },
+ "0d": {
+  "file": "s0d.mp3",
+  "dur": 147.45,
+  "music": true,
+  "loopStart": 85.7767,
+  "loopEnd": 146.95
+ },
+ "0e": {
+  "file": "s0e.mp3",
+  "dur": 147.45,
+  "music": true,
+  "loopStart": 133.047,
+  "loopEnd": 146.95
+ },
+ "0f": {
+  "file": "s0f.mp3",
+  "dur": 147.45,
+  "music": true,
+  "loopStart": 85.7768,
+  "loopEnd": 146.95
+ }
+}
