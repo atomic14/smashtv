@@ -2,7 +2,7 @@ import { assets, anim, loadImage } from '../assets';
 import { ctx, W, H, drawText, drawFrameAt, fillRect, drawAt, textWidth } from '../gfx';
 import { input } from '../input';
 import { audio, SND } from '../audio';
-import { DT, ROOM_X, ROOM_Y, FLOOR, DOORS, DOOR_IDS, type DoorId, rand, irand, pick, clamp } from './world';
+import { DT, ROOM_X, ROOM_Y, FLOOR, DOORS, DOOR_IDS, type DoorId, rand, irand, pick, clamp, ARCADE_HZ } from './world';
 import {
   Player, Shot, Effect, Enemy, Grunt, Snake, Pickup,
   POWERUPS, PRIZES, type PickupKind, type Entity,
@@ -362,7 +362,9 @@ export class Game {
     if (p.lives < 0) {
       this.setState('continue');
       audio.playMusic(null);
-      audio.play(SND.byeBye);
+      // as recorded from the original: "No way!", then a sting 127 frames later
+      audio.play(SND.noWay);
+      this.after(127 / ARCADE_HZ, () => this.state === 'continue' && audio.play(SND.continueSting));
       return;
     }
     this.respawn();

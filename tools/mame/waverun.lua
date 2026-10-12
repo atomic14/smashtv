@@ -145,7 +145,7 @@ emu.register_frame_done(function()
     w32(0x010dd4e0, LISTS[START])
   end
   if frame < 1500 then return end
-  sp:write_u16(0x01086360, 5)
+  if not os.getenv("NOPIN") then sp:write_u16(0x01086360, 5) end
 
   -- which world's room list is active (the world number in RAM is not a reliable guide)
   local list, world = r32(0x010dd4e0), 0

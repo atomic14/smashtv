@@ -34,7 +34,10 @@ export const SND = {
   needIt: '5a',
   bingo: '50',
   noWay: '3f',
-  byeBye: '3e',
+  /** Crowd booing (Whisper hears 'body body…'); not used by the original's continue. */
+  boo: '3e',
+  /** Played 127 frames after "No way!" on the continue screen. */
+  continueSting: '37',
   yeah: '30',
   tenSeconds: '59',
 } as const;
