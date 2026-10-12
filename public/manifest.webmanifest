@@ -1,0 +1,8 @@
+{
+  "name": "Smash T.V.",
+  "short_name": "Smash T.V.",
+  "start_url": "./",
+  "display": "fullscreen",
+  "background_color": "#000000",
+  "theme_color": "#000000"
+}

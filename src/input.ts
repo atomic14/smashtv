@@ -37,6 +37,16 @@ class Input {
       document.body.classList.add('touch');
     }
     this.initTouch();
+    // phones: go fullscreen on the first tap (browsers only allow it from a user gesture).
+    // iPhone Safari has no fullscreen for pages; there, "Add to Home Screen" runs it
+    // fullscreen via the manifest and apple-mobile-web-app-capable.
+    if (this.touch) {
+      const go = () => {
+        const el = document.documentElement;
+        if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+      };
+      addEventListener('touchend', go, { passive: true });
+    }
   }
 
   /** Call once per game tick. */

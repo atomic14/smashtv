@@ -25,7 +25,8 @@ from the copyrighted ROMs.
 | Touch | Left thumbstick | Right thumbstick | Tap |
 
 On phones, portrait shows the screen on top with the thumbsticks below; landscape overlays
-the sticks beside the screen.
+the sticks beside the screen. The first tap goes fullscreen where the browser allows it
+(Android); on iPhone, use Share → Add to Home Screen to run it fullscreen.
 
 ## How the assets were reverse engineered
 
