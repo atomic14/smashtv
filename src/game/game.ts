@@ -10,6 +10,7 @@ import {
 import { Boss, MutoidMan } from './boss';
 import { CobraDeath } from './cobra';
 import { Scarface } from './scarface';
+import { Host } from './host';
 import { WORLDS, TITLE_ROOM, STUDIO_ROOM, WorldMap, mapCell, type EnemyKind, type RoomDef } from './levels';
 
 type State = 'title' | 'intro' | 'map' | 'play' | 'transition' | 'continue' | 'gameover' | 'victory';
@@ -271,7 +272,8 @@ export class Game {
     if (this.room.boss && !this.bossSpawned && this.stateT > 2.5) {
       this.bossSpawned = true;
       const kind = this.room.boss;
-      this.boss = kind === 'cobra' ? new CobraDeath() : kind === 'scarface' ? new Scarface() : new MutoidMan();
+      this.boss =
+        kind === 'cobra' ? new CobraDeath() : kind === 'scarface' ? new Scarface() : kind === 'host' ? new Host() : new MutoidMan();
       this.enemies.push(this.boss);
       for (let i = 0; i < (this.room.boss === 'cobra' ? 0 : 6); i++) {
         const m = new SpikeMine(rand(FLOOR.x0 + 30, FLOOR.x1 - 30), rand(FLOOR.y0 + 40, FLOOR.y1 - 10));
